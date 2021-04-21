@@ -60,10 +60,10 @@ namespace Flow.Data.SqlServer
                     difference = sourceColumns.Except(destinationColumns).ToArray();
                     if (difference.Any())
                     {
-                        context.LogWarning($"The given {difference.Serialize()} source columns do not exist in {destinationColumns.Serialize()} destination columns.");
+                        await context.LogWarningAsync($"The given {difference.Serialize()} source columns do not exist in {destinationColumns.Serialize()} destination columns.");
                     }
 
-                    context.LogInfo($"[{fileName}] headers: {JsonConvert.SerializeObject(sourceColumns)}");
+                    await context.LogInfoAsync($"[{fileName}] headers: {JsonConvert.SerializeObject(sourceColumns)}");
                     timer.Start();
                     using (var sqlCopy = new SqlBulkCopy(conn))
                     {
@@ -72,9 +72,9 @@ namespace Flow.Data.SqlServer
                         sqlCopy.NotifyAfter = 1000000;
                         sqlCopy.BulkCopyTimeout = that.BulkCopyTimeout;
 
-                        sqlCopy.SqlRowsCopied += (sender, e) =>
+                        sqlCopy.SqlRowsCopied += async (sender, e) =>
                         {
-                            context.LogInfo($"{fileName}: {e.RowsCopied} records processed in { timer.Elapsed.TotalMinutes:N2}");
+                            await context.LogInfoAsync($"{fileName}: {e.RowsCopied} records processed in { timer.Elapsed.TotalMinutes:N2}");
                         };
 
                         foreach (var column in that.Columns.Select(c => Format(c, context, null, that)))
@@ -86,7 +86,7 @@ namespace Flow.Data.SqlServer
                             using (var dtReader = new CsvDataReaderExt(csvReader))
                             {
                                 await sqlCopy.WriteToServerAsync(dtReader);
-                                context.LogInfo($"{fileName}: all records processed in {timer.Elapsed.TotalMinutes:N2}");
+                                await context.LogInfoAsync($"{fileName}: all records processed in {timer.Elapsed.TotalMinutes:N2}");
                             }
                         }
                     }

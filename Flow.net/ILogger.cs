@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Flow.Logging
 {
     public interface ILogger
     {
-        void LogError(string message);
+        Task LogErrorAsync(string message);
 
-        void LogInfo(string message);
+        Task LogInfoAsync(string message);
 
-        void LogWarning(string message);
+        Task LogWarningAsync(string message);
     }
 }

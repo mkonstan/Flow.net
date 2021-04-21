@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Flow.Quandl
 {
-    public class QuandlDataDowloader : PipelineAction
+    public class QuandlDataDownloader : PipelineAction
     {
         private const int MaxDownloadAttemps = 10;
 
@@ -29,7 +29,7 @@ namespace Flow.Quandl
                 {
                     var result = await Url.GetJsonAsync<Rootobject>();
 
-                    context.LogInfo($"data {result.Download.File.Status}");
+                    await context.LogInfoAsync($"data {result.Download.File.Status}");
                     if (result.Download.File.Status.Equals("generating", StringComparison.OrdinalIgnoreCase))
                     {
                         await Task.Delay(TimeSpan.FromSeconds(10));
@@ -41,7 +41,7 @@ namespace Flow.Quandl
                 catch (Exception e)
                 {
                     attempCounter += 1;
-                    context.LogError(
+                    await context.LogErrorAsync(
                         $"attempt {attempCounter} of {MaxDownloadAttemps} failed. Waiting 10sec before tryin again. ERROR [{e.Message}]");
                 }
             }

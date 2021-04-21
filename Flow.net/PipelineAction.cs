@@ -29,14 +29,14 @@ namespace Flow
             var type = input.GetType();
             try
             {
-                context.LogInfo($"{Name}:{Id} executing");
+                await context.LogInfoAsync($"{Name}:{Id} executing");
                 var result = await GetFormatter(type)(context, input);
-                context.LogInfo($"{Name}:{Id} compleated");
+                await context.LogInfoAsync($"{Name}:{Id} compleated");
                 return result;
             }
             catch (Exception ex)
             {
-                context.LogError($"{Name}:{Id} Failed[{ new { State = this, Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
+                await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = this, Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
                 throw;
             }
         }

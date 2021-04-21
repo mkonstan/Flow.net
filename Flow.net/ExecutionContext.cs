@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Flow
 {
@@ -32,11 +33,14 @@ namespace Flow
             _state,
             StringComparer.OrdinalIgnoreCase);
 
-        public void LogError(string message) => _logger.LogError(message);
+        public async Task LogErrorAsync(string message)
+            => await Task.FromResult(_logger.LogErrorAsync(message));
 
-        public void LogInfo(string message) => _logger.LogInfo(message);
+        public async Task LogInfoAsync(string message)
+            => await Task.FromResult(_logger.LogInfoAsync(message));
 
-        public void LogWarning(string message) => _logger.LogWarning(message);
+        public async Task LogWarningAsync(string message)
+            => await Task.FromResult(_logger.LogWarningAsync(message));
 
         public IExecutionContext New() { return new ExecutionContext(_logger, this); }
     }
