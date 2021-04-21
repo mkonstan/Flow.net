@@ -40,7 +40,7 @@ namespace Flow.IO
 			}
 			catch (Exception e)
 			{
-				context.LogErrorAsync(
+				await context.LogErrorAsync(
 					$"ERROR: Unable to start process {FileName} with Arguments: {Arguments}. ERROR [{e.Message}]");
 				throw;
 			}
