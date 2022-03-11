@@ -12,7 +12,7 @@ namespace Flow
         IDictionary<string, object> GetState();
 
         IExecutionContext New();
-        //IPayload Result { get; }
-        //public Type ResultType { get; }
+        IExecutionContext New(IPayload result);
+        IPayload Result { get; }
     }
 }

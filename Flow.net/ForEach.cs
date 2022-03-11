@@ -21,7 +21,7 @@ namespace Flow
                 var e = element;
                 foreach (var action in that.Actions)
                 {
-                    e = await action.ExecuteAsync(context.New(), e);
+                    e = await action.ExecuteAsync(context.New(e));
                 }
                 results.Add(e);
             }

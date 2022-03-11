@@ -22,7 +22,7 @@ namespace Flow
             var results = new List<IPayload>();
             foreach (var pipeline in pipelinePartitios)
             {
-                var result = await Task.WhenAll(pipeline.Select(p => p.action.ExecuteAsync(context, input)).ToArray());
+                var result = await Task.WhenAll(pipeline.Select(p => p.action.ExecuteAsync(context.New(input))).ToArray());
                 results.AddRange(result);
             }
             return new PayloadCollection(results);

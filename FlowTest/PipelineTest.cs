@@ -18,13 +18,25 @@ namespace FlowTest
         public async Task RunTest()
         {
             var builder = new PipelineBuilder(Logger);
-            var result = await builder.StartWith<GetFiles>(op => {
+            var result = await builder.StartWith<GetFiles>(op =>
+            {
                 op.SearchPattern = "*.cs";
-                op.DirectoryPath = Environment.CurrentDirectory;
+                op.DirectoryPath = @"C:\Projects\Flow.net - GitHub";
                 op.SearchOption = System.IO.SearchOption.AllDirectories;
-            }).ExecuteAsync();
+            })
+                .ContinueWith<SetScopedResponse>(op =>
+                {
+                    op.Name = "FileCollection";
+                })
+                .ContinueWith<ForEach>(op =>
+                {
+                    op.PayloadProvider = new GetScopedPayload { Name = "FileCollection" };
+                    op.Actions = builder.StartWith<LogResult>().Create().Actions;
+                })
+                .ContinueWith<LogContext>()
+                .ExecuteAsync();
             Trace.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
-            Assert.IsTrue(result is FilePathCollection);
+            Assert.IsTrue(result is PayloadCollection);
         }
 
         class TraceLogger : ILogger

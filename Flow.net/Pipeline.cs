@@ -11,13 +11,11 @@ namespace Flow
 
         protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
         {
-            var newContext = context.New();
-            var responce = input;
             foreach (var action in Actions)
             {
-                responce = await action.ExecuteAsync(newContext, responce);
+                input = await action.ExecuteAsync(context = context.New(input));
             }
-            return responce;
+            return input;
         }
     }
 }

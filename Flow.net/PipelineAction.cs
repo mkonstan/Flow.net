@@ -20,12 +20,15 @@ namespace Flow
         [JsonIgnore]
         private Guid Id { get; } = Guid.NewGuid();
 
+        public IPayloadProvider PayloadProvider { get; set; } = new DefaultPayloadProvider();
+
         protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IPayload>> handler)
             where TIn : IPayload
         { _handlers[typeof(TIn)] = async (context, input) => await handler(context, (TIn)input); }
 
-        public async Task<IPayload> ExecuteAsync(IExecutionContext context, IPayload input)
+        public async Task<IPayload> ExecuteAsync(IExecutionContext context)
         {
+            var input = PayloadProvider.GetPayload(context, this);
             var type = input.GetType();
             try
             {

@@ -14,13 +14,23 @@ namespace Flow
             _logger = logger;
         }
 
+        public static IPipelineAction CreateAction<T>()
+            where T : IPipelineAction, new()
+        {
+            return new T();
+        }
+
         public static IPipelineAction CreateAction<T>(Action<T> body)
             where T : IPipelineAction, new()
         {
-            var action = new T();
+            var action = (T)CreateAction<T>();
             body(action);
             return action;
         }
+
+        public IPipelineBuilder StartWith<T>()
+            where T : IPipelineAction, new()
+            => StartWith<T>(_ => { });
 
         public IPipelineBuilder StartWith<T>(Action<T> body)
             where T : IPipelineAction, new()
@@ -40,19 +50,25 @@ namespace Flow
 
             public IPipelineAction CreateAction<T>(Action<T> body)
                 where T : IPipelineAction, new()
-            {
-                var action = new T();
-                body(action);
-                return action;
-            }
+                => PipelineBuilder.CreateAction(body);
+            public IPipelineAction CreateAction<T>()
+                where T : IPipelineAction, new()
+                => PipelineBuilder.CreateAction<T>();
 
             public async Task<IPayload> ExecuteAsync()
-            { return await Create().ExecuteAsync(new ExecutionContext(_logger), NullResult.Instance); }
+            { return await Create().ExecuteAsync(new ExecutionContext(_logger)); }
+
+            public IPipelineBuilder ContinueWith<T>()
+                where T : IPipelineAction, new()
+            {
+                _pipeline.Add(CreateAction<T>());
+                return new Builder(_logger, _pipeline);
+            }
 
             public IPipelineBuilder ContinueWith<T>(Action<T> body)
                 where T : IPipelineAction, new()
             {
-                _pipeline.Add(CreateAction<T>(body));
+                _pipeline.Add(CreateAction(body));
                 return new Builder(_logger, _pipeline);
             }
 

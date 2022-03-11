@@ -29,7 +29,7 @@ namespace Flow
                 var actions = actionGroup.Select(a => a.action);
                 result.AddRange(
                     await Task.WhenAll(
-                        input.SelectMany(p => actions.Select(a => a.ExecuteAsync(context.New(), input))).ToArray()));
+                        input.SelectMany(p => actions.Select(a => a.ExecuteAsync(context.New(input)))).ToArray()));
             }
             return new PayloadCollection(result);
         }
