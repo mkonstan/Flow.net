@@ -57,6 +57,9 @@ namespace Flow
             }
 
             public IPipeline Create() { return new Pipeline { Actions = _pipeline }; }
+
+            public async Task<T> ExecuteAsync<T>() where T : IPayload
+                => (T)await ExecuteAsync();
         }
     }
 }
