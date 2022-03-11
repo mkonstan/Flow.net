@@ -56,11 +56,10 @@ namespace Flow
             try
             {
                 if (template == null) return template;
-                var state = context.GetState();
                 var result = Formatter.Format(
                     template,
                     new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-                    { { "scope", action }, { "input", input }, { "state", state } });
+                    { { "action", action }, { "session", context.Session.GetState() }, { "scope", context.Scope.GetState() }, { "input", input } });
                 return result;
             }
             catch (Exception)

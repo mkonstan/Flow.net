@@ -1,4 +1,5 @@
 using Flow;
+using Flow.Data.SqlServer;
 using Flow.IO;
 using Flow.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -17,14 +18,15 @@ namespace FlowTest
         [TestMethod]
         public async Task RunTest()
         {
+            new SqlBulkLoadCsv() { };
             var builder = new PipelineBuilder(Logger);
             var result = await builder.StartWith<GetFiles>(op =>
-            {
-                op.SearchPattern = "*.cs";
-                op.DirectoryPath = @"C:\Projects\Flow.net - GitHub";
-                op.SearchOption = System.IO.SearchOption.AllDirectories;
-            })
-                .ContinueWith<SetScopedResponse>(op =>
+                {
+                    op.SearchPattern = "*.cs";
+                    op.DirectoryPath = @"C:\Projects\Flow.net - GitHub";
+                    op.SearchOption = System.IO.SearchOption.AllDirectories;
+                })
+                .ContinueWith<StoreInScope>(op =>
                 {
                     op.Name = "FileCollection";
                 })
