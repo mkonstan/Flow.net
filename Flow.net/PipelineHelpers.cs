@@ -21,8 +21,10 @@ namespace Flow
 
         public static IDbAction AddParameter(this IDbAction source, IQueryParameterBuilder parameter)
         {
-            var parameters = new List<IQueryParameterBuilder>(source.Parameters ?? new IQueryParameterBuilder[] { });
-            parameters.Add(parameter);
+            var parameters = new List<IQueryParameterBuilder>(source.Parameters ?? new IQueryParameterBuilder[] { })
+            {
+                parameter
+            };
             source.Parameters = parameters;
             return source;
         }
