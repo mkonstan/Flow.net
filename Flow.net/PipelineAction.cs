@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -14,6 +15,14 @@ namespace Flow
             = new Dictionary<Type, Func<IExecutionContext, IPayload, Task<IPayload>>>();
 
         public PipelineAction() { Name = GetType().Name; }
+
+
+        public string ScopedName { get; set; }
+
+        [DefaultValue(false)]
+        public bool ContextLogged { get; set; }
+
+
 
         private string Name { get; }
 
@@ -35,7 +44,8 @@ namespace Flow
                 await context.LogInfoAsync($"{Name}:{Id} executing");
                 var result = await GetFormatter(type)(context, input);
                 await context.LogInfoAsync($"{Name}:{Id} compleated");
-                return result;
+                return await SetActionAccessibilityAsync(context, result);
+                //return result;
             }
             catch (Exception ex)
             {
@@ -83,6 +93,19 @@ namespace Flow
             var formatter = SmartFormat.Smart.CreateDefaultSmartFormat();
             formatter.Settings.ConvertCharacterStringLiterals = false;
             return formatter;
+        }
+
+
+
+        private async Task<IPayload> SetActionAccessibilityAsync(IExecutionContext context, IPayload result)
+        {
+            if (!(ScopedName is null))
+                context.Scope[ScopedName] = result;
+
+            if (ContextLogged)
+                await context.LogInfoAsync(context.Serialize(true));
+
+            return result;
         }
     }
 }
