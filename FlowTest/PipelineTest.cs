@@ -30,12 +30,12 @@ namespace FlowTest
                 {
                     op.Name = "FileCollection";
                 })
+                .ContinueWith<LogContext>()
                 .ContinueWith<ForEach>(op =>
                 {
-                    op.PayloadProvider = new GetScopedPayload { Name = "FileCollection" };
+                    op.PayloadProvider = new GetPayloadFromScope { Name = "FileCollection" };
                     op.Actions = builder.StartWith<LogResult>().Create().Actions;
                 })
-                .ContinueWith<LogContext>()
                 .ExecuteAsync();
             Trace.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
             Assert.IsTrue(result is PayloadCollection);

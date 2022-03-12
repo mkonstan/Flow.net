@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Flow
 {
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class SetStateVariables : PipelineAction
     {
         public IDictionary<string, object> Variables = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -28,6 +30,7 @@ namespace Flow
 
     }
 
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class StoreInState: PipelineAction
     {
         private readonly Action<IExecutionContext, string, IPayload> _assignment;

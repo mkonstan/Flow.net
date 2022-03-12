@@ -69,9 +69,15 @@ namespace Flow
                 set => _state[name] = value;
             }
 
+            public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
+                => GetState().GetEnumerator();
+
             public IDictionary<string, object> GetState() => new Dictionary<string, object>(
                 _state,
                 StringComparer.OrdinalIgnoreCase);
+
+            IEnumerator IEnumerable.GetEnumerator()
+                => GetEnumerator();
         }
     }
 }

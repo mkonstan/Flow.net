@@ -23,7 +23,7 @@ namespace Flow
     static class JsonHelpers
     {
         public static string Serialize<T>(this T source, bool beautify = false)
-            => JsonConvert.SerializeObject(source, beautify ? Formatting.None : Formatting.Indented);
+            => JsonConvert.SerializeObject(source, beautify ? Formatting.Indented : Formatting.None);
 
         public static T Deserialize<T>(this string source)
             => JsonConvert.DeserializeObject<T>(source);

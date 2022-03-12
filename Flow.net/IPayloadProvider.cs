@@ -19,11 +19,19 @@ namespace Flow
             => (T) GetPayload(context, action);
     }
 
-    public class GetScopedPayload : DefaultPayloadProvider
+    public class GetPayloadFromScope : DefaultPayloadProvider
     {
         public string Name { get; set; }
 
         public override IPayload GetPayload(IExecutionContext context, IPipelineAction action)
-            => (IPayload)context[Name];
+            => (IPayload)context.Scope[Name];
+    }
+
+    public class GetPayloadFromSession : DefaultPayloadProvider
+    {
+        public string Name { get; set; }
+
+        public override IPayload GetPayload(IExecutionContext context, IPipelineAction action)
+            => (IPayload)context.Session[Name];
     }
 }

@@ -11,17 +11,12 @@ namespace Flow
         IState Scope { get; }
         IState Session { get; }
 
-        [Obsolete("Use Scope or Session")]
-        object this[string name] { get; set; }
-
-        //IDictionary<string, object> GetState();
-
         IExecutionContext New();
         IExecutionContext New(IPayload result);
         IPayload Result { get; }
     }
 
-    public interface IState // : IEnumerable<object>
+    public interface IState : IEnumerable<KeyValuePair<string, object>>
     {
         object this[string name] { get; set; }
 
