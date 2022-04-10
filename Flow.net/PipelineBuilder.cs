@@ -56,7 +56,7 @@ namespace Flow
                 => PipelineBuilder.CreateAction<T>();
 
             public async Task<IPayload> ExecuteAsync()
-            { return await Create().ExecuteAsync(new ExecutionContext(_logger)); }
+            { return await Create().ExecuteAsync(new ExecutionContext(_logger, new System.Threading.CancellationTokenSource())); }
 
             public IPipelineBuilder ContinueWith<T>()
                 where T : IPipelineAction, new()

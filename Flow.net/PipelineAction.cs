@@ -1,8 +1,11 @@
-﻿using System;
+﻿using Flow.Policy;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Polly;
+using System;
 using System.Collections.Generic;
-using System.Data;
+using System.ComponentModel;
 using System.Linq;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Flow
@@ -20,6 +23,7 @@ namespace Flow
         [JsonIgnore]
         private Guid Id { get; } = Guid.NewGuid();
 
+        public IExecutionPolicy ExecutionPolicy { get; set; } = new DefaultPolicy();
         public IPayloadProvider PayloadProvider { get; set; } = new DefaultPayloadProvider();
 
         protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IPayload>> handler)
@@ -27,20 +31,27 @@ namespace Flow
         { _handlers[typeof(TIn)] = async (context, input) => await handler(context, (TIn)input); }
 
         public async Task<IPayload> ExecuteAsync(IExecutionContext context)
-        {
+        {            
             var input = PayloadProvider.GetPayload(context, this);
             var type = input.GetType();
+            var policy = ExecutionPolicy.CreatePolicy(this, context, input);
             try
             {
                 await context.LogInfoAsync($"{Name}:{Id} executing");
-                var result = await GetFormatter(type)(context, input);
+                var formatter = GetFormatter(type);
+                var result = await policy.ExecuteAsync(async () => await formatter(context, input));
                 await context.LogInfoAsync($"{Name}:{Id} compleated");
                 return result;
+            }
+            catch (PipelineException ex)
+            {
+                await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = this, Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
+                throw;
             }
             catch (Exception ex)
             {
                 await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = this, Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
-                throw;
+                throw new PipelineException(this, ex);
             }
         }
 
@@ -74,15 +85,16 @@ namespace Flow
             var actions = _handlers
                 .Where(kv => kv.Key.IsAssignableFrom(type))
                 .Select(kv => kv.Value);
-            if(!actions.Any()) return DefaultHandlerAsync;
+            if (!actions.Any()) return DefaultHandlerAsync;
             return actions.SingleOrDefault() ?? DefaultHandlerAsync;
         }
 
         private static SmartFormat.SmartFormatter CreateDefaultFormater()
         {
             var formatter = SmartFormat.Smart.CreateDefaultSmartFormat();
-            formatter.Settings.ConvertCharacterStringLiterals = false;
+            formatter.Settings.Parser.ConvertCharacterStringLiterals = false;
             return formatter;
         }
+
     }
 }
