@@ -10,7 +10,7 @@ namespace Flow.Data
 {
     public static class QueryHelpers
     {
-        public static SqlMapper.ICustomQueryParameter AsTVP<T>(this IEnumerable<T> data, string typeName = null)
+        public static SqlMapper.ICustomQueryParameter AsTVP<T>(this IEnumerable<T> data, string? typeName = null)
             where T : class
         { return new SqlDataRecordParameter<T>(data, typeName); }
 
