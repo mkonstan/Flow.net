@@ -17,7 +17,7 @@ namespace Flow.Quandl
 
         public string WorkingDirectory { get; set; }
 
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
         {
             var attempCounter = 0;
             var workingDirectory = Format(WorkingDirectory, context, NullResult.Instance, this);

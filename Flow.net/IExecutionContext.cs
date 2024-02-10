@@ -1,11 +1,13 @@
 ﻿using Flow.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
 namespace Flow
 {
-    public interface IExecutionContext : ILogger
+
+	public interface IExecutionContext : ILogger
     {
 
         IState Scope { get; }
@@ -15,7 +17,7 @@ namespace Flow
         CancellationToken Token { get; }
 
         IExecutionContext New();
-        IExecutionContext New(IPayload result);
-        IPayload Result { get; }
+        IExecutionContext New(IValue result);
+        IValue Result { get; }
     }
 }

@@ -29,11 +29,12 @@ namespace FlowTest
                 .ContinueWith<StoreInScope>(op =>
                 {
                     op.Name = "FileCollection";
+                    //op.OnErrorPipeline
                 })
                 .ContinueWith<LogContext>()
                 .ContinueWith<ForEach>(op =>
                 {
-                    op.PayloadProvider = new GetPayloadFromScope { Name = "FileCollection" };
+                    op.InputProvider = new GetValueFromScope { Name = "FileCollection" };
                     op.Actions = builder.StartWith<LogResult>().Create().Actions;
                 })
                 .ExecuteAsync();

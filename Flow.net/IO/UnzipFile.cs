@@ -19,13 +19,13 @@ namespace Flow.IO
 
         public string WorkingDirectory { get; set; }
 
-        private static async Task<IPayload> Handler(UnzipFile that, IExecutionContext context, PayloadCollection paths)
+        private static async Task<IValue> Handler(UnzipFile that, IExecutionContext context, PayloadCollection paths)
         { return await Handler(that, context, paths.Cast<FilePath>().ToArray()); }
 
-        private static async Task<IPayload> Handler(UnzipFile that, IExecutionContext context, params FilePath[] paths)
+        private static async Task<IValue> Handler(UnzipFile that, IExecutionContext context, params FilePath[] paths)
         { return await Handler(that, context, paths.Select(p => p.Path).ToArray()); }
 
-        private static async Task<IPayload> Handler(UnzipFile that, IExecutionContext context, IEnumerable<string> paths)
+        private static async Task<IValue> Handler(UnzipFile that, IExecutionContext context, IEnumerable<string> paths)
         {
             return await Task.Run(
                 () =>

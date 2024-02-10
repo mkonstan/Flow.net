@@ -9,7 +9,7 @@ namespace Flow
     {
         public IEnumerable<IPipelineAction> Actions { get; set; }
 
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
         {
             foreach (var action in Actions)
             {

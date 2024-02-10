@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Flow
@@ -12,29 +13,34 @@ namespace Flow
     {
         private readonly ILogger _logger;
 
-        public ExecutionContext(ILogger logger)
-            : this(logger, new State(), new State(), NullResult.Instance)
+        public ExecutionContext(ILogger logger, CancellationTokenSource tokenSource)
+            : this(logger, new State(), new State(), NullResult.Instance, tokenSource)
         { }
 
-        private ExecutionContext(ILogger logger, IExecutionContext context, IPayload result)
-            : this(logger, context.Scope, context.Session, result)
+        private ExecutionContext(ILogger logger, IExecutionContext context, IValue result)
+            : this(logger, context.Scope, context.Session, result, context.TokenSource)
         { }
 
-        private ExecutionContext(ILogger logger, IState scope, IState session, IPayload result)
+        private ExecutionContext(ILogger logger, IState scope, IState session, IValue result, CancellationTokenSource tokenSource)
         {
             _logger = logger;
             Scope = new State(scope.GetState());
             Session = session;
             Result = result;
+            TokenSource = tokenSource;
         }
 
         public object this[string name] { get => Scope[name]; set => Scope[name] = value; }
 
-        public IPayload Result { get; private set; }
+        public IValue Result { get; private set; }
 
         public IState Scope { get; }
 
         public IState Session { get; }
+
+        public System.Threading.CancellationTokenSource TokenSource { get; }
+
+        public System.Threading.CancellationToken Token => TokenSource.Token;
 
         public async Task LogErrorAsync(string message)
             => await Task.FromResult(_logger.LogErrorAsync(message));
@@ -47,7 +53,7 @@ namespace Flow
 
         public IExecutionContext New()
             => New(NullResult.Instance);
-        public IExecutionContext New(IPayload result)
+        public IExecutionContext New(IValue result)
             { return new ExecutionContext(_logger, this, result); }
 
         class State : IState
@@ -78,6 +84,7 @@ namespace Flow
 
             IEnumerator IEnumerable.GetEnumerator()
                 => GetEnumerator();
+
         }
     }
 }

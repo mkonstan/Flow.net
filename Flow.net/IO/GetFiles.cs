@@ -12,7 +12,7 @@ namespace Flow.IO
         public string SearchPattern { get; set; } = "*";
         public SearchOption SearchOption { get; set; } = SearchOption.TopDirectoryOnly;
 
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
         {
             var directory = Format(DirectoryPath, context, NullResult.Instance, this);
             var searchPattern = Format(SearchPattern, context, NullResult.Instance, this);

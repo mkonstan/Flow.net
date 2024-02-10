@@ -28,13 +28,13 @@ namespace Flow.Data.SqlServer
 
         protected SqlConnection CreateConnection(string connectionString) { return new System.Data.SqlClient.SqlConnection(connectionString); }
 
-        protected static async Task<IPayload> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, FilePathCollection files)
+        protected static async Task<IValue> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, FilePathCollection files)
         { return await HandlerAsync(that, context, files.Cast<FilePath>().ToArray()); }
 
-        protected static async Task<IPayload> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, params FilePath[] files)
+        protected static async Task<IValue> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, params FilePath[] files)
         { return await HandlerAsync(that, context, files.Select(p => p.Path).ToArray()); }
 
-        protected static async Task<IPayload> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, IEnumerable<string> input)
+        protected static async Task<IValue> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, IEnumerable<string> input)
         {
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {

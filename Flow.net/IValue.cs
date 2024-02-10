@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Flow
 {
-    public interface IPayload
+    public interface IValue
     {
         Type Type { get; }
     }

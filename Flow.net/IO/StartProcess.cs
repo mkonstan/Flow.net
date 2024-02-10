@@ -13,7 +13,7 @@ namespace Flow.IO
 		public string Arguments { get; set; }
 		public TimeSpan? Timeout { get; set; }
 
-		protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+		protected override async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
 		{
 			var filePathAndName = Format(FileName, context, NullResult.Instance, this);
 			var arguments = Format(Arguments, context, NullResult.Instance, this);

@@ -13,8 +13,8 @@ namespace Flow
     public abstract class PipelineAction : IPipelineAction
     {
         private static readonly SmartFormat.SmartFormatter Formatter = CreateDefaultFormater();
-        private readonly IDictionary<Type, Func<IExecutionContext, IPayload, Task<IPayload>>> _handlers
-            = new Dictionary<Type, Func<IExecutionContext, IPayload, Task<IPayload>>>();
+        private readonly IDictionary<Type, Func<IExecutionContext, IValue, Task<IValue>>> _handlers
+            = new Dictionary<Type, Func<IExecutionContext, IValue, Task<IValue>>>();
 
         public PipelineAction() { Name = GetType().Name; }
 
@@ -24,15 +24,15 @@ namespace Flow
         private Guid Id { get; } = Guid.NewGuid();
 
         public IExecutionPolicy ExecutionPolicy { get; set; } = new DefaultPolicy();
-        public IPayloadProvider PayloadProvider { get; set; } = new DefaultPayloadProvider();
+        public IValueProvider InputProvider { get; set; } = new DefaultValueProvider();
 
-        protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IPayload>> handler)
-            where TIn : IPayload
+        protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IValue>> handler)
+            where TIn : IValue
         { _handlers[typeof(TIn)] = async (context, input) => await handler(context, (TIn)input); }
 
-        public async Task<IPayload> ExecuteAsync(IExecutionContext context)
+        public async Task<IValue> ExecuteAsync(IExecutionContext context)
         {            
-            var input = PayloadProvider.GetPayload(context, this);
+            var input = InputProvider.Get(context, this);
             var type = input.GetType();
             var policy = ExecutionPolicy.CreatePolicy(this, context, input);
             try
@@ -55,13 +55,13 @@ namespace Flow
             }
         }
 
-        protected virtual async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
-        { return await Task.FromException<IPayload>(new NotImplementedException()); }
+        protected virtual async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
+        { return await Task.FromException<IValue>(new NotImplementedException()); }
 
         protected static string Format(
             string template,
             IExecutionContext context,
-            IPayload input,
+            IValue input,
             IPipelineAction action)
         {
             try
@@ -79,7 +79,7 @@ namespace Flow
             }
         }
 
-        private Func<IExecutionContext, IPayload, Task<IPayload>> GetFormatter(Type type)
+        private Func<IExecutionContext, IValue, Task<IValue>> GetFormatter(Type type)
         {
             if (!_handlers.Any()) return DefaultHandlerAsync;
             var actions = _handlers

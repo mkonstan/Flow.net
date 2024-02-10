@@ -12,6 +12,6 @@ namespace Flow.Data
 
         int? Size { get; set; }
 
-        IQueryParameter Create(IExecutionContext context, IPayload input, IPipelineAction action);
+        IQueryParameter Create(IExecutionContext context, IValue input, IPipelineAction action);
     }
 }

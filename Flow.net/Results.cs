@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Flow
 {
-    public class ValueResult<T> : IPayload
+    public class ValueResult<T> : IValue
     {
         public ValueResult(T value) { Value = value; }
 
@@ -16,7 +16,7 @@ namespace Flow
         public virtual Type Type => typeof(ValueResult<T>);
     }
 
-    public class ErrorResult : IPayload
+    public class ErrorResult : IValue
     {
         protected ErrorResult(Exception error) { Error = error; }
 
@@ -25,14 +25,14 @@ namespace Flow
         public Type Type => typeof(ErrorResult);
     }
 
-    public sealed class NullResult : IPayload
+    public sealed class NullResult : IValue
     {
         public static NullResult Instance = new NullResult();
 
         public Type Type => typeof(NullResult);
     }
 
-    public class FilePath : IPayload
+    public class FilePath : IValue
     {
         public FilePath(string filePath) { Path = filePath; }
 
@@ -50,7 +50,7 @@ namespace Flow
         public override Type Type => typeof(ObjectResult);
     }
 
-    public abstract class ValueCollection<TValue> : IPayload, IEnumerable<TValue>
+    public abstract class ValueCollection<TValue> : IValue, IEnumerable<TValue>
     {
         private readonly IEnumerable<TValue> _values;
 
@@ -84,13 +84,13 @@ namespace Flow
         public override Type Type => typeof(ExpandoCollection);
     }
 
-    public class PayloadCollection : ValueCollection<IPayload>
+    public class PayloadCollection : ValueCollection<IValue>
     {
         public PayloadCollection(IEnumerable<dynamic> collection)
             : this(collection.Select(c => new ObjectResult(c)))
         { }
 
-        public PayloadCollection(IEnumerable<IPayload> collection)
+        public PayloadCollection(IEnumerable<IValue> collection)
             : base(collection)
         { }
 

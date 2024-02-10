@@ -16,7 +16,7 @@ namespace Flow.Data
 
         public string Template { get; set; }
 
-        public IQueryParameter Create(IExecutionContext context, IPayload input, IPipelineAction action)
+        public IQueryParameter Create(IExecutionContext context, IValue input, IPipelineAction action)
         {
             var value = Formatter.Format(Template, (action, input, context));
             return new QueryParameter { Name = Name, Type = Type, Size = Size, Value = value };

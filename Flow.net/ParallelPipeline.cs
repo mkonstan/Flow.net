@@ -13,13 +13,13 @@ namespace Flow
         public int MaxDegreeOfParallelism { get; set; } = ProcessorCount;
         public IEnumerable<IPipelineAction> Actions { get; set; }
 
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
         {
             int maxdegreeOfParallelism = MaxDegreeOfParallelism <= 0 ? ProcessorCount : MaxDegreeOfParallelism;
             var pipelinePartitios = Actions
                 .Select((action, index) => new { action, index })
                 .GroupBy(v => v.index);
-            var results = new List<IPayload>();
+            var results = new List<IValue>();
             foreach (var pipeline in pipelinePartitios)
             {
                 var result = await Task.WhenAll(pipeline.Select(p => p.action.ExecuteAsync(context.New(input))).ToArray());

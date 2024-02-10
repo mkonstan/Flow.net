@@ -21,7 +21,7 @@ namespace Flow.Data
 
         protected virtual CommandType? GetCommandType() => null;
 
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValue> DefaultHandlerAsync(IExecutionContext context, IValue input)
         {
             using (var conn = CreateConnection(Format(ConnectionString, context, input, this)))
             {

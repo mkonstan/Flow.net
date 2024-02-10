@@ -14,7 +14,7 @@ namespace Flow.Data
 
         public object Value { get; set; }
 
-        public IQueryParameter Create(IExecutionContext context, IPayload input, IPipelineAction action)
+        public IQueryParameter Create(IExecutionContext context, IValue input, IPipelineAction action)
         { return new QueryParameter { Name = Name, Type = Type, Size = Size, Value = Value }; }
     }
 }
