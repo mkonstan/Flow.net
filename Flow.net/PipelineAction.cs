@@ -10,8 +10,8 @@ namespace Flow
     public abstract class PipelineAction : IPipelineAction
     {
         private static readonly SmartFormat.SmartFormatter Formatter = CreateDefaultFormater();
-        private readonly IDictionary<Type, Func<IExecutionContext, IPayload, Task<IPayload>>> _handlers
-            = new Dictionary<Type, Func<IExecutionContext, IPayload, Task<IPayload>>>();
+        private readonly IDictionary<Type, Func<IExecutionContext, IValueSource, Task<IValueSource>>> _handlers
+            = new Dictionary<Type, Func<IExecutionContext, IValueSource, Task<IValueSource>>>();
 
         public PipelineAction() { Name = GetType().Name; }
 
@@ -22,11 +22,11 @@ namespace Flow
 
         public IPayloadProvider PayloadProvider { get; set; } = new DefaultPayloadProvider();
 
-        protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IPayload>> handler)
-            where TIn : IPayload
+        protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IValueSource>> handler)
+            where TIn : IValueSource
         { _handlers[typeof(TIn)] = async (context, input) => await handler(context, (TIn)input); }
 
-        public async Task<IPayload> ExecuteAsync(IExecutionContext context)
+        public async Task<IValueSource> ExecuteAsync(IExecutionContext context)
         {
             var input = PayloadProvider.GetPayload(context, this);
             var type = input.GetType();
@@ -44,13 +44,13 @@ namespace Flow
             }
         }
 
-        protected virtual async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
-        { return await Task.FromException<IPayload>(new NotImplementedException()); }
+        protected virtual async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
+        { return await Task.FromException<IValueSource>(new NotImplementedException()); }
 
         protected static string Format(
             string template,
             IExecutionContext context,
-            IPayload input,
+            IValueSource input,
             IPipelineAction action)
         {
             try
@@ -68,7 +68,7 @@ namespace Flow
             }
         }
 
-        private Func<IExecutionContext, IPayload, Task<IPayload>> GetFormatter(Type type)
+        private Func<IExecutionContext, IValueSource, Task<IValueSource>> GetFormatter(Type type)
         {
             if (!_handlers.Any()) return DefaultHandlerAsync;
             var actions = _handlers
@@ -81,7 +81,7 @@ namespace Flow
         private static SmartFormat.SmartFormatter CreateDefaultFormater()
         {
             var formatter = SmartFormat.Smart.CreateDefaultSmartFormat();
-            formatter.Settings.ConvertCharacterStringLiterals = false;
+			formatter.Settings.Parser.ConvertCharacterStringLiterals = false;
             return formatter;
         }
     }

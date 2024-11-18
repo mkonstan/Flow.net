@@ -17,12 +17,12 @@ namespace Flow
 
         public IEnumerable<IPipelineAction> Actions { get; set; }
 
-        private static async Task<IPayload> Handler(
+        private static async Task<IValueSource> Handler(
             ParallelForEach that,
             IExecutionContext context,
             PayloadCollection input)
         {
-            var result = new List<IPayload>(input.Count());
+            var result = new List<IValueSource>(input.Count());
             var actionGroups = that.Actions.Select((action, index) => (action, index)).GroupBy(a => ((a.index+1) % that.MaxDegreeOfParallelism) == 0);
             foreach (var actionGroup in actionGroups)
             {

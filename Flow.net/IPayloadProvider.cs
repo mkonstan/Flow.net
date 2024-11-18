@@ -6,16 +6,16 @@ namespace Flow
 {
     public interface IPayloadProvider
     {
-        IPayload GetPayload(IExecutionContext context, IPipelineAction action);
-        T GetPayload<T>(IExecutionContext context, IPipelineAction action) where T : IPayload;
+        IValueSource GetPayload(IExecutionContext context, IPipelineAction action);
+        T GetPayload<T>(IExecutionContext context, IPipelineAction action) where T : IValueSource;
     }
 
     public class DefaultPayloadProvider : IPayloadProvider
     {
-        public virtual IPayload GetPayload(IExecutionContext context, IPipelineAction action)
+        public virtual IValueSource GetPayload(IExecutionContext context, IPipelineAction action)
             => context.Result;
 
-        public T GetPayload<T>(IExecutionContext context, IPipelineAction action) where T : IPayload
+        public T GetPayload<T>(IExecutionContext context, IPipelineAction action) where T : IValueSource
             => (T) GetPayload(context, action);
     }
 
@@ -23,15 +23,15 @@ namespace Flow
     {
         public string Name { get; set; }
 
-        public override IPayload GetPayload(IExecutionContext context, IPipelineAction action)
-            => (IPayload)context.Scope[Name];
+        public override IValueSource GetPayload(IExecutionContext context, IPipelineAction action)
+            => (IValueSource)context.Scope[Name];
     }
 
     public class GetPayloadFromSession : DefaultPayloadProvider
     {
         public string Name { get; set; }
 
-        public override IPayload GetPayload(IExecutionContext context, IPipelineAction action)
-            => (IPayload)context.Session[Name];
+        public override IValueSource GetPayload(IExecutionContext context, IPipelineAction action)
+            => (IValueSource)context.Session[Name];
     }
 }

@@ -12,9 +12,9 @@ namespace Flow
 
         public IEnumerable<IPipelineAction> Actions { get; set; }
 
-        private static async Task<IPayload> Handler(ForEach that, IExecutionContext context, PayloadCollection input)
+        private static async Task<IValueSource> Handler(ForEach that, IExecutionContext context, PayloadCollection input)
         {
-            var results = new List<IPayload>();
+            var results = new List<IValueSource>();
             foreach (var element in input)
             {
                 //var newContext = context.New();

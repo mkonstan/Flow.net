@@ -13,7 +13,7 @@ namespace Flow.IO
 		public string Arguments { get; set; }
 		public TimeSpan? Timeout { get; set; }
 
-		protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+		protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
 		{
 			var filePathAndName = Format(FileName, context, NullResult.Instance, this);
 			var arguments = Format(Arguments, context, NullResult.Instance, this);
@@ -35,7 +35,7 @@ namespace Flow.IO
 						throw new Exception($"Process timeout expired! Timeout {Timeout.Value.TotalMinutes} min.");
 
 					}
-					return await Task.FromResult(new ValueResult<int>(proc.ExitCode));
+					return await Task.FromResult(new ValuePrimitive<int>(proc.ExitCode));
 				}
 			}
 			catch (Exception e)

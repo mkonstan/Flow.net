@@ -16,11 +16,11 @@ namespace Flow
             : this(logger, new State(), new State(), NullResult.Instance)
         { }
 
-        private ExecutionContext(ILogger logger, IExecutionContext context, IPayload result)
+        private ExecutionContext(ILogger logger, IExecutionContext context, IValueSource result)
             : this(logger, context.Scope, context.Session, result)
         { }
 
-        private ExecutionContext(ILogger logger, IState scope, IState session, IPayload result)
+        private ExecutionContext(ILogger logger, IState scope, IState session, IValueSource result)
         {
             _logger = logger;
             Scope = new State(scope.GetState());
@@ -30,7 +30,7 @@ namespace Flow
 
         public object this[string name] { get => Scope[name]; set => Scope[name] = value; }
 
-        public IPayload Result { get; private set; }
+        public IValueSource Result { get; private set; }
 
         public IState Scope { get; }
 
@@ -47,7 +47,7 @@ namespace Flow
 
         public IExecutionContext New()
             => New(NullResult.Instance);
-        public IExecutionContext New(IPayload result)
+        public IExecutionContext New(IValueSource result)
             { return new ExecutionContext(_logger, this, result); }
 
         class State : IState

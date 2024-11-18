@@ -7,7 +7,7 @@ namespace Flow.Logging
 {
     public class LogResult : PipelineAction
     {
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
         {
             await context.LogInfoAsync(input.Serialize(true));
             return input;
@@ -15,7 +15,7 @@ namespace Flow.Logging
     }
     public class LogContext : PipelineAction
     {
-        protected override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
         {
             await context.LogInfoAsync(context.Serialize(true));
             return input;

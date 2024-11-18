@@ -12,8 +12,8 @@ namespace Flow
         IState Session { get; }
 
         IExecutionContext New();
-        IExecutionContext New(IPayload result);
-        IPayload Result { get; }
+        IExecutionContext New(IValueSource result);
+        IValueSource Result { get; }
     }
 
     public interface IState : IEnumerable<KeyValuePair<string, object>>

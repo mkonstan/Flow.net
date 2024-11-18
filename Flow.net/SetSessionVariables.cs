@@ -18,7 +18,7 @@ namespace Flow
         }
 
         public void AddStateVariable(string name, object value) => Variables[name] = value;
-        protected sealed override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload input)
+        protected sealed override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
         {
             foreach (var element in Variables)
             {
@@ -33,15 +33,15 @@ namespace Flow
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class StoreInState: PipelineAction
     {
-        private readonly Action<IExecutionContext, string, IPayload> _assignment;
-        protected StoreInState(Action<IExecutionContext, string, IPayload> assignment)
+        private readonly Action<IExecutionContext, string, IValueSource> _assignment;
+        protected StoreInState(Action<IExecutionContext, string, IValueSource> assignment)
         {
             _assignment = assignment;
         }
 
         public string Name { get; set; }
 
-        protected sealed override async Task<IPayload> DefaultHandlerAsync(IExecutionContext context, IPayload payload)
+        protected sealed override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource payload)
         {
             _assignment(context, Name, payload);
             return await Task.FromResult(payload);

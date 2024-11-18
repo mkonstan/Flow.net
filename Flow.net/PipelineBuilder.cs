@@ -55,7 +55,7 @@ namespace Flow
                 where T : IPipelineAction, new()
                 => PipelineBuilder.CreateAction<T>();
 
-            public async Task<IPayload> ExecuteAsync()
+            public async Task<IValueSource> ExecuteAsync()
             { return await Create().ExecuteAsync(new ExecutionContext(_logger)); }
 
             public IPipelineBuilder ContinueWith<T>()
@@ -74,7 +74,7 @@ namespace Flow
 
             public IPipeline Create() { return new Pipeline { Actions = _pipeline }; }
 
-            public async Task<T> ExecuteAsync<T>() where T : IPayload
+            public async Task<T> ExecuteAsync<T>() where T : IValueSource
                 => (T)await ExecuteAsync();
         }
     }

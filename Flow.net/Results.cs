@@ -7,16 +7,16 @@ using System.Text;
 
 namespace Flow
 {
-    public class ValueResult<T> : IPayload
+    public class ValuePrimitive<T> : IValueSource
     {
-        public ValueResult(T value) { Value = value; }
+        public ValuePrimitive(T value) { Value = value; }
 
         public T Value { get; }
 
-        public virtual Type Type => typeof(ValueResult<T>);
+        public virtual Type Type => typeof(ValuePrimitive<T>);
     }
 
-    public class ErrorResult : IPayload
+    public class ErrorResult : IValueSource
     {
         protected ErrorResult(Exception error) { Error = error; }
 
@@ -25,14 +25,14 @@ namespace Flow
         public Type Type => typeof(ErrorResult);
     }
 
-    public sealed class NullResult : IPayload
+    public sealed class NullResult : IValueSource
     {
         public static NullResult Instance = new NullResult();
 
         public Type Type => typeof(NullResult);
     }
 
-    public class FilePath : IPayload
+    public class FilePath : IValueSource
     {
         public FilePath(string filePath) { Path = filePath; }
 
@@ -41,7 +41,7 @@ namespace Flow
         public Type Type => typeof(FilePath);
     }
 
-    public class ObjectResult : ValueResult<object>
+    public class ObjectResult : ValuePrimitive<object>
     {
         public ObjectResult(object value) : base(value)
         {
@@ -50,7 +50,7 @@ namespace Flow
         public override Type Type => typeof(ObjectResult);
     }
 
-    public abstract class ValueCollection<TValue> : IPayload, IEnumerable<TValue>
+    public abstract class ValueCollection<TValue> : IValueSource, IEnumerable<TValue>
     {
         private readonly IEnumerable<TValue> _values;
 
@@ -84,13 +84,13 @@ namespace Flow
         public override Type Type => typeof(ExpandoCollection);
     }
 
-    public class PayloadCollection : ValueCollection<IPayload>
+    public class PayloadCollection : ValueCollection<IValueSource>
     {
         public PayloadCollection(IEnumerable<dynamic> collection)
             : this(collection.Select(c => new ObjectResult(c)))
         { }
 
-        public PayloadCollection(IEnumerable<IPayload> collection)
+        public PayloadCollection(IEnumerable<IValueSource> collection)
             : base(collection)
         { }
 
