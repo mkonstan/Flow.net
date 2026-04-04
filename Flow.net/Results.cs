@@ -27,7 +27,7 @@ namespace Flow
 
     public sealed class NullResult : IValueSource
     {
-        public static NullResult Instance = new NullResult();
+        public static readonly NullResult Instance = new NullResult();
 
         public Type Type => typeof(NullResult);
     }

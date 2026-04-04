@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace Flow
 {
+    /// <summary>
+    /// Iterates over elements in a PayloadCollection in parallel, running Actions sequentially per element.
+    /// Action instances are shared across parallel elements — actions must be stateless/thread-safe.
+    /// </summary>
     public class ParallelForEach : PipelineAction, IPipeline
     {
         public static readonly int ProcessorCount = Environment.ProcessorCount;
@@ -22,16 +26,39 @@ namespace Flow
             IExecutionContext context,
             PayloadCollection input)
         {
-            var result = new List<IValueSource>(input.Count());
-            var actionGroups = that.Actions.Select((action, index) => (action, index)).GroupBy(a => ((a.index+1) % that.MaxDegreeOfParallelism) == 0);
-            foreach (var actionGroup in actionGroups)
+            if (that.Actions == null)
+                throw new ActionConfigurationException(that.GetType().Name, "Actions must be set before execution.");
+
+            int maxDop = that.MaxDegreeOfParallelism <= 0 ? ProcessorCount : that.MaxDegreeOfParallelism;
+            var elements = input.ToArray();
+            var actions = that.Actions.ToArray();
+            var results = new IValueSource[elements.Length];
+
+            for (int i = 0; i < elements.Length; i += maxDop)
             {
-                var actions = actionGroup.Select(a => a.action);
-                result.AddRange(
-                    await Task.WhenAll(
-                        input.SelectMany(p => actions.Select(a => a.ExecuteAsync(context.New(input)))).ToArray()));
+                var batch = Enumerable.Range(i, Math.Min(maxDop, elements.Length - i));
+                var whenAll = Task.WhenAll(batch.Select(async idx =>
+                {
+                    var e = elements[idx];
+                    foreach (var action in actions)
+                    {
+                        e = await action.ExecuteAsync(context.New(e));
+                    }
+                    results[idx] = e;
+                }));
+                try
+                {
+                    await whenAll;
+                }
+                catch
+                {
+                    throw new ParallelForEachException(
+                        $"One or more elements failed in ParallelForEach ({whenAll.Exception.InnerExceptions.Count} failure(s)).",
+                        whenAll.Exception);
+                }
             }
-            return new PayloadCollection(result);
+
+            return new PayloadCollection(results);
         }
     }
 }

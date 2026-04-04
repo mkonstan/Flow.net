@@ -1,8 +1,8 @@
-﻿using Ionic.Zip;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -36,12 +36,16 @@ namespace Flow.IO
                             path =>
                             {
                                 var files = new List<string>();
-                                using (var zreader = ZipFile.Read(path))
+                                using (var archive = ZipFile.OpenRead(path))
                                 {
-                                    foreach (var file in zreader.Entries.Where(et => !et.IsDirectory))
+                                    foreach (var entry in archive.Entries.Where(e => !string.IsNullOrEmpty(e.Name)))
                                     {
-                                        file.Extract(workingDirectory, ExtractExistingFileAction.OverwriteSilently);
-                                        files.Add(Path.Combine(workingDirectory, file.FileName));
+                                        var destinationPath = Path.Combine(workingDirectory, entry.FullName);
+                                        var destinationDir = Path.GetDirectoryName(destinationPath);
+                                        if (!Directory.Exists(destinationDir))
+                                            Directory.CreateDirectory(destinationDir);
+                                        entry.ExtractToFile(destinationPath, overwrite: true);
+                                        files.Add(destinationPath);
                                     }
                                 }
                                 return files;

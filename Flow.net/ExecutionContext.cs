@@ -37,13 +37,13 @@ namespace Flow
         public IState Session { get; }
 
         public async Task LogErrorAsync(string message)
-            => await Task.FromResult(_logger.LogErrorAsync(message));
+            => await _logger.LogErrorAsync(message);
 
         public async Task LogInfoAsync(string message)
-            => await Task.FromResult(_logger.LogInfoAsync(message));
+            => await _logger.LogInfoAsync(message);
 
         public async Task LogWarningAsync(string message)
-            => await Task.FromResult(_logger.LogWarningAsync(message));
+            => await _logger.LogWarningAsync(message);
 
         public IExecutionContext New()
             => New(NullResult.Instance);

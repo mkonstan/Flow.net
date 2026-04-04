@@ -14,6 +14,9 @@ namespace Flow
 
         private static async Task<IValueSource> Handler(ForEach that, IExecutionContext context, PayloadCollection input)
         {
+            if (that.Actions == null)
+                throw new ActionConfigurationException(that.GetType().Name, "Actions must be set before execution.");
+
             var results = new List<IValueSource>();
             foreach (var element in input)
             {

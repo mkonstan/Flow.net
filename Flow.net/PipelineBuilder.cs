@@ -61,15 +61,13 @@ namespace Flow
             public IPipelineBuilder ContinueWith<T>()
                 where T : IPipelineAction, new()
             {
-                _pipeline.Add(CreateAction<T>());
-                return new Builder(_logger, _pipeline);
+                return new Builder(_logger, _pipeline.Append(CreateAction<T>()));
             }
 
             public IPipelineBuilder ContinueWith<T>(Action<T> body)
                 where T : IPipelineAction, new()
             {
-                _pipeline.Add(CreateAction(body));
-                return new Builder(_logger, _pipeline);
+                return new Builder(_logger, _pipeline.Append(CreateAction(body)));
             }
 
             public IPipeline Create() { return new Pipeline { Actions = _pipeline }; }

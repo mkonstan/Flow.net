@@ -4,11 +4,6 @@ using System.Threading.Tasks;
 
 namespace Flow
 {
-    public interface IPipelineActionProp
-    {
-        IValueSource GetValue(IExecutionContext context, IPipeline action);
-    }
-
     public interface IPipelineAction
     {
         IPayloadProvider PayloadProvider { get; set; }

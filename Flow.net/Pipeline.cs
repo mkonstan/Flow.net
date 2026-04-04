@@ -11,6 +11,9 @@ namespace Flow
 
         protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
         {
+            if (Actions == null)
+                throw new ActionConfigurationException(GetType().Name, "Actions must be set before execution.");
+
             foreach (var action in Actions)
             {
                 input = await action.ExecuteAsync(context = context.New(input));

@@ -338,3 +338,12 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+# Secrets
+**/appsettings.Development.json
+
+# Non-framework artifacts
+_scratch/
+_tools/
+CLAUDE.md
+FLOW_NET_CODE_REVIEW.md

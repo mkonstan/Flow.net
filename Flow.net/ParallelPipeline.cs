@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace Flow
 {
+    /// <summary>
+    /// Executes Actions in parallel batches. Each action receives the same input.
+    /// Action instances are invoked concurrently — actions must be stateless/thread-safe.
+    /// </summary>
     public class ParallelPipeline : PipelineAction, IPipeline
     {
         public static readonly int ProcessorCount = Environment.ProcessorCount;
@@ -15,16 +19,30 @@ namespace Flow
 
         protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
         {
-            int maxdegreeOfParallelism = MaxDegreeOfParallelism <= 0 ? ProcessorCount : MaxDegreeOfParallelism;
-            var pipelinePartitios = Actions
-                .Select((action, index) => new { action, index })
-                .GroupBy(v => v.index);
+            if (Actions == null)
+                throw new ActionConfigurationException(GetType().Name, "Actions must be set before execution.");
+
+            int maxDegreeOfParallelism = MaxDegreeOfParallelism <= 0 ? ProcessorCount : MaxDegreeOfParallelism;
+            var actions = Actions.ToArray();
             var results = new List<IValueSource>();
-            foreach (var pipeline in pipelinePartitios)
+
+            // Process in batches of maxDegreeOfParallelism
+            for (int i = 0; i < actions.Length; i += maxDegreeOfParallelism)
             {
-                var result = await Task.WhenAll(pipeline.Select(p => p.action.ExecuteAsync(context.New(input))).ToArray());
-                results.AddRange(result);
+                var batch = actions.Skip(i).Take(maxDegreeOfParallelism);
+                var whenAll = Task.WhenAll(batch.Select(a => a.ExecuteAsync(context.New(input))));
+                try
+                {
+                    results.AddRange(await whenAll);
+                }
+                catch
+                {
+                    throw new ParallelPipelineException(
+                        $"One or more actions failed in ParallelPipeline ({whenAll.Exception.InnerExceptions.Count} failure(s)).",
+                        whenAll.Exception);
+                }
             }
+
             return new PayloadCollection(results);
         }
     }

@@ -34,18 +34,19 @@ namespace Flow
             {
                 await context.LogInfoAsync($"{Name}:{Id} executing");
                 var result = await GetFormatter(type)(context, input);
-                await context.LogInfoAsync($"{Name}:{Id} compleated");
+                await context.LogInfoAsync($"{Name}:{Id} completed");
                 return result;
             }
             catch (Exception ex)
             {
-                await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = this, Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
+                await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = SanitizeForLogging(this), Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
                 throw;
             }
         }
 
-        protected virtual async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
-        { return await Task.FromException<IValueSource>(new NotImplementedException()); }
+        protected virtual Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
+            => Task.FromException<IValueSource>(
+                new HandlerNotFoundException(GetType().Name, input.GetType().Name));
 
         protected static string Format(
             string template,
@@ -53,29 +54,87 @@ namespace Flow
             IValueSource input,
             IPipelineAction action)
         {
-            try
-            {
-                if (template == null) return template;
-                var result = Formatter.Format(
-                    template,
-                    new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-                    { { "action", action }, { "session", context.Session.GetState() }, { "scope", context.Scope.GetState() }, { "input", input } });
-                return result;
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            if (template == null)
+                throw new ActionConfigurationException(action.GetType().Name, "Template cannot be null. Ensure the action property is set before execution.");
+
+            return Formatter.Format(
+                template,
+                new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                { { "action", action }, { "session", context.Session.GetState() }, { "scope", context.Scope.GetState() }, { "input", input } });
         }
 
         private Func<IExecutionContext, IValueSource, Task<IValueSource>> GetFormatter(Type type)
         {
             if (!_handlers.Any()) return DefaultHandlerAsync;
-            var actions = _handlers
+            var match = _handlers
                 .Where(kv => kv.Key.IsAssignableFrom(type))
-                .Select(kv => kv.Value);
-            if(!actions.Any()) return DefaultHandlerAsync;
-            return actions.SingleOrDefault() ?? DefaultHandlerAsync;
+                .OrderBy(kv => GetInheritanceDepth(type, kv.Key))
+                .Select(kv => kv.Value)
+                .FirstOrDefault();
+            return match ?? DefaultHandlerAsync;
+        }
+
+        private static int GetInheritanceDepth(Type type, Type handlerType)
+        {
+            // Exact match is always best
+            if (type == handlerType) return 0;
+
+            // Class hierarchy: walk BaseType chain
+            if (!handlerType.IsInterface)
+            {
+                int depth = 0;
+                var current = type;
+                while (current != null && current != handlerType)
+                {
+                    depth++;
+                    current = current.BaseType;
+                }
+                return current == handlerType ? depth : int.MaxValue;
+            }
+
+            // Interface: find how far up the chain we first see it
+            int level = 0;
+            var t = type;
+            while (t != null)
+            {
+                if (t.GetInterfaces().Contains(handlerType))
+                {
+                    // Check if this level directly declares it (vs inheriting it)
+                    var parentInterfaces = t.BaseType?.GetInterfaces();
+                    if (parentInterfaces == null || !parentInterfaces.Contains(handlerType))
+                        return level + 1; // +1 so concrete type match at same level wins
+                }
+                level++;
+                t = t.BaseType;
+            }
+            return int.MaxValue;
+        }
+
+        private static IDictionary<string, object> SanitizeForLogging(PipelineAction action)
+        {
+            var props = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            foreach (var prop in action.GetType().GetProperties())
+            {
+                var name = prop.Name;
+                try
+                {
+                    var value = prop.GetValue(action);
+                    if (name.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase) ||
+                        name.Contains("Password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        props[name] = "***MASKED***";
+                    }
+                    else
+                    {
+                        props[name] = value;
+                    }
+                }
+                catch
+                {
+                    props[name] = "<error reading property>";
+                }
+            }
+            return props;
         }
 
         private static SmartFormat.SmartFormatter CreateDefaultFormater()

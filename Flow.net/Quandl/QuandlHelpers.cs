@@ -1,11 +1,11 @@
 ﻿using Flurl;
 using Flurl.Http;
-using Ionic.Zip;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using Flow.Quandl;
@@ -22,12 +22,16 @@ namespace Flow.Quandl
         public static IEnumerable<string> Unzip(this string zipFile, string targerDirectory)
         {
             var files = new List<string>();
-            using (var zreader = ZipFile.Read(zipFile))
+            using (var archive = ZipFile.OpenRead(zipFile))
             {
-                foreach (var file in zreader.Entries.Where(et => !et.IsDirectory))
+                foreach (var entry in archive.Entries.Where(e => !string.IsNullOrEmpty(e.Name)))
                 {
-                    file.Extract(targerDirectory, ExtractExistingFileAction.OverwriteSilently);
-                    files.Add(Path.Combine(targerDirectory, file.FileName));
+                    var destinationPath = Path.Combine(targerDirectory, entry.FullName);
+                    var destinationDir = Path.GetDirectoryName(destinationPath);
+                    if (!Directory.Exists(destinationDir))
+                        Directory.CreateDirectory(destinationDir);
+                    entry.ExtractToFile(destinationPath, overwrite: true);
+                    files.Add(destinationPath);
                 }
             }
             return files;
