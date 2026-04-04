@@ -7,6 +7,12 @@
     <Company>TechMA</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Version>0.1.0</Version>
+    <PackageId>Flownet.Data.SqlServer</PackageId>
+    <Description>SQL Server data actions for the Flow.net pipeline library. Includes SqlServerExecute and SqlBulkLoadCsv.</Description>
+    <PackageTags>pipeline;etl;sqlserver;bulkcopy</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/mkonstan/Flow.net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>

@@ -7,6 +7,12 @@
     <Company>TechMA</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Version>0.1.0</Version>
+    <PackageId>Flownet.Data.Postgres</PackageId>
+    <Description>PostgreSQL data actions for the Flow.net pipeline library. Includes PostgresQLExecute and SqlServerToPostgresBulkCopy with Npgsql binary import.</Description>
+    <PackageTags>pipeline;etl;postgres;npgsql;bulkcopy</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/mkonstan/Flow.net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
