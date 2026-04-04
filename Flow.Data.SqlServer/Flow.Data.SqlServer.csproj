@@ -6,14 +6,19 @@
     <Authors>Maxim Konstantinovski</Authors>
     <Company>TechMA</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <PackageId>Flownet.Data.SqlServer</PackageId>
     <Description>SQL Server data actions for the Flow.net pipeline library. Includes SqlServerExecute and SqlBulkLoadCsv.</Description>
     <PackageTags>pipeline;etl;sqlserver;bulkcopy</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/mkonstan/Flow.net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Flow.net\Flow.net.csproj" />
