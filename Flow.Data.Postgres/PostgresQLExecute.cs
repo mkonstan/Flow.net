@@ -1,9 +1,7 @@
 ﻿using Npgsql;
-using System;
 using System.Data;
-using System.Linq;
 
-namespace Flow.Data.PostgresQL
+namespace Flow.Data.Postgres
 {
     public class PostgresQLExecute : DbExecute
     {

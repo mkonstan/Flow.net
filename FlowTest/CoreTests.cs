@@ -11,6 +11,7 @@ using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Threading.Tasks;
 using Flow.Data.ETL;
+using Flow.Data.Postgres;
 using NpgsqlTypes;
 
 namespace FlowTest
@@ -1589,12 +1590,15 @@ namespace FlowTest
     class TestableDbToDbBulkCopy : SqlServerToPostgresBulkCopy
     {
         public static NpgsqlDbType? TestInferClr(Type clrType)
-            => InferNpgsqlDbTypeFromClr(clrType);
+            => SqlServerToPostgresBulkCopy.InferNpgsqlDbTypeFromClr(clrType);
 
         public static NpgsqlDbType[] TestResolveColumnTypes(
             DbDataReader reader, IList<ColumnMapping> mappings, int[] ordinals,
             Dictionary<string, string> udtNames, string destinationTable)
-            => ResolveColumnTypes(reader, mappings, ordinals, udtNames, destinationTable);
+            => SqlServerToPostgresBulkCopy.ResolveColumnTypes(reader, mappings, ordinals, udtNames, destinationTable);
+
+        public static (string Schema, string Table) TestParseDestinationTable(string destinationTable)
+            => ParseDestinationTable(destinationTable);
     }
 
     [TestClass]
@@ -1634,11 +1638,7 @@ namespace FlowTest
         [TestMethod]
         public void ParseDestinationTable_WithSchema()
         {
-            var pipeline = new Pipeline { Actions = Array.Empty<IPipelineAction>() };
-            // Test via the static method — it's protected, so we use reflection
-            var method = typeof(DbToDbBulkCopy).GetMethod("ParseDestinationTable",
-                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-            var result = ((string Schema, string Table))method.Invoke(null, new object[] { "myschema.mytable" });
+            var result = TestableDbToDbBulkCopy.TestParseDestinationTable("myschema.mytable");
             Assert.AreEqual("myschema", result.Schema);
             Assert.AreEqual("mytable", result.Table);
         }
@@ -1646,25 +1646,25 @@ namespace FlowTest
         [TestMethod]
         public void ParseDestinationTable_WithoutSchema_DefaultsToPublic()
         {
-            var method = typeof(DbToDbBulkCopy).GetMethod("ParseDestinationTable",
-                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-            var result = ((string Schema, string Table))method.Invoke(null, new object[] { "mytable" });
+            var result = TestableDbToDbBulkCopy.TestParseDestinationTable("mytable");
             Assert.AreEqual("public", result.Schema);
             Assert.AreEqual("mytable", result.Table);
         }
 
         [TestMethod]
-        public void ColumnMapping_DefaultDestinationType_IsNull()
+        public void ColumnMapping_RecordEquality()
         {
-            var mapping = new ColumnMapping("src", "dest");
-            Assert.IsNull(mapping.DestinationType);
+            var a = new ColumnMapping("src", "dest");
+            var b = new ColumnMapping("src", "dest");
+            Assert.AreEqual(a, b);
         }
 
         [TestMethod]
-        public void ColumnMapping_ExplicitDestinationType_IsSet()
+        public void ColumnMapping_Properties()
         {
-            var mapping = new ColumnMapping("src", "dest", NpgsqlDbType.Text);
-            Assert.AreEqual(NpgsqlDbType.Text, mapping.DestinationType);
+            var mapping = new ColumnMapping("source_col", "dest_col");
+            Assert.AreEqual("source_col", mapping.SourceColumn);
+            Assert.AreEqual("dest_col", mapping.DestinationColumn);
         }
 
         [TestMethod]
@@ -1690,9 +1690,9 @@ namespace FlowTest
                 new("order", "order"),  // reserved word
             };
 
-            var method = typeof(DbToDbBulkCopy).GetMethod("BuildCopyCommand",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-            var result = (string)method.Invoke(action, new object[] { "public.test", mappings });
+            var method = typeof(SqlServerToPostgresBulkCopy).GetMethod("BuildCopyCommand",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+            var result = (string)method.Invoke(null, new object[] { "public.test", mappings });
 
             Assert.IsTrue(result.Contains("\"id\""));
             Assert.IsTrue(result.Contains("\"date\""));

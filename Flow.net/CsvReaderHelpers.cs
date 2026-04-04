@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Flow
 {
-    static class CsvReaderHelpers
+    public static class CsvReaderHelpers
     {
         public static CsvReader OpenCsvReader(this string file, CsvConfiguration configuration)
         {

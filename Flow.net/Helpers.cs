@@ -13,13 +13,13 @@ using System.Threading.Tasks;
 
 namespace Flow
 {
-    static class LinqHelpers
+    public static class LinqHelpers
     {
         public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source, IEqualityComparer<T> comparer)
             => new HashSet<T>(source, comparer);
     }
 
-    static class JsonHelpers
+    public static class JsonHelpers
     {
         public static string Serialize<T>(this T source, bool beautify = false)
             => JsonConvert.SerializeObject(source, beautify ? Formatting.Indented : Formatting.None);

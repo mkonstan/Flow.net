@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 using System.Threading.Tasks;
 
 namespace Flow
@@ -119,8 +119,8 @@ namespace Flow
                 try
                 {
                     var value = prop.GetValue(action);
-                    if (name.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Password", StringComparison.OrdinalIgnoreCase))
+                    if (name.IndexOf("ConnectionString", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         props[name] = "***MASKED***";
                     }

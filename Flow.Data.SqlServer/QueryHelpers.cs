@@ -6,7 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 
-namespace Flow.Data
+namespace Flow.Data.SqlServer
 {
     public static class QueryHelpers
     {

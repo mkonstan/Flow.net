@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Flow.net\Flow.net.csproj" />
+    <ProjectReference Include="..\Flow.Data.SqlServer\Flow.Data.SqlServer.csproj" />
+    <ProjectReference Include="..\Flow.Data.Postgres\Flow.Data.Postgres.csproj" />
   </ItemGroup>
 
 </Project>
