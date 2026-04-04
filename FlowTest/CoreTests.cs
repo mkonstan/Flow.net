@@ -471,12 +471,11 @@ namespace FlowTest
         {
             var logger = new TestLogger();
             var builder = new PipelineBuilder(logger);
+            var tempDir = Path.GetTempPath();
 
-            // SetSessionVariables sets a value, then a subsequent action uses Format
-            // We test this indirectly through the pipeline
             await builder
                 .StartWith<SetSessionVariables>(op =>
-                    op.AddStateVariable("TestDir", @"C:\temp"))
+                    op.AddStateVariable("TestDir", tempDir))
                 .ContinueWith<GetFiles>(op =>
                 {
                     op.DirectoryPath = "{session.TestDir}";
@@ -486,7 +485,6 @@ namespace FlowTest
                 .ExecuteAsync();
 
             // If Format didn't resolve, GetFiles would fail with literal "{session.TestDir}"
-            // If C:\temp doesn't exist this may throw - that's ok, it means Format resolved
         }
     }
 
