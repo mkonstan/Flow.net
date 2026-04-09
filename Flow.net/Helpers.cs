@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Runtime.CompilerServices;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,11 +12,15 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
+[assembly: InternalsVisibleTo("Flow.Data.SqlServer")]
+[assembly: InternalsVisibleTo("Flow.Data.Postgres")]
+[assembly: InternalsVisibleTo("FlowTest")]
+
 namespace Flow
 {
-    public static class LinqHelpers
+    internal static class LinqHelpers
     {
-        public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source, IEqualityComparer<T> comparer)
+        internal static HashSet<T> ToHashSet<T>(this IEnumerable<T> source, IEqualityComparer<T> comparer)
             => new HashSet<T>(source, comparer);
     }
 

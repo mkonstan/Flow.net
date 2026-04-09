@@ -18,7 +18,7 @@ namespace Flow.Data.ETL
         public string DestinationTable { get; set; }
         public IList<ColumnMapping> ColumnMappings { get; set; }
         public int BatchSize { get; set; } = 50000;
-        public int? CommandTimeout { get; set; }
+        public int CommandTimeout { get; set; } = 0;
         public int NotifyAfter { get; set; } = 100000;
 
         protected static TConn CreateConnection<TConn>(string connectionString)
@@ -59,7 +59,7 @@ namespace Flow.Data.ETL
             var destTable = Format(DestinationTable, context, input, this);
 
             using var sourceConn = CreateConnection<TSource>(sourceConnStr);
-            using var reader = sourceConn.ExecuteReader(sourceQuery, commandTimeout: CommandTimeout ?? 0);
+            using var reader = sourceConn.ExecuteReader(sourceQuery, commandTimeout: CommandTimeout);
             using var destConn = CreateConnection<TDest>(destConnStr);
             destConn.Open();
 
@@ -73,6 +73,7 @@ namespace Flow.Data.ETL
                 DestinationTable = destTable,
                 BatchSize = BatchSize,
                 NotifyAfter = NotifyAfter,
+                CommandTimeout = CommandTimeout,
                 OnBatchComplete = OnBatchCompleteAsync
             };
 

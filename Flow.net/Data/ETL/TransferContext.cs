@@ -9,6 +9,7 @@ namespace Flow.Data.ETL
         public string DestinationTable { get; set; }
         public int BatchSize { get; set; }
         public int NotifyAfter { get; set; }
+        public int CommandTimeout { get; set; }
         public Func<IExecutionContext, long, Task> OnBatchComplete { get; set; }
     }
 }

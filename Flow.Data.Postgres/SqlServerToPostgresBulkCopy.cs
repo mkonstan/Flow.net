@@ -28,7 +28,8 @@ namespace Flow.Data.Postgres
                   WHERE table_schema = @schema AND table_name = @table
                     AND is_generated = 'NEVER'
                   ORDER BY ordinal_position",
-                new { schema, table });
+                new { schema, table },
+                commandTimeout: CommandTimeout);
 
             var sourceColumnSet = Enumerable.Range(0, sourceReader.FieldCount)
                 .Select(i => sourceReader.GetName(i))
@@ -61,16 +62,20 @@ namespace Flow.Data.Postgres
             var needsSchemaQuery = NeedsSchemaQuery(dbReader, mappings, ordinals);
             Dictionary<string, string> udtNames = null;
             if (needsSchemaQuery)
-                udtNames = await QueryUdtNamesAsync(pgConn, schema, table);
+                udtNames = await QueryUdtNamesAsync(pgConn, schema, table, context.CommandTimeout);
 
             var resolvedTypes = ResolveColumnTypes(dbReader, mappings, ordinals, udtNames, context.DestinationTable);
             var copyCommand = BuildCopyCommand(context.DestinationTable, mappings);
 
             long totalRows = 0;
             NpgsqlBinaryImporter writer = null;
+            var importerTimeout = context.CommandTimeout == 0
+                ? TimeSpan.Zero
+                : TimeSpan.FromSeconds(context.CommandTimeout);
             try
             {
                 writer = await pgConn.BeginBinaryImportAsync(copyCommand);
+                writer.Timeout = importerTimeout;
 
                 while (await dbReader.ReadAsync())
                 {
@@ -86,6 +91,7 @@ namespace Flow.Data.Postgres
                             $"Batch complete: {totalRows} rows committed to {context.DestinationTable}");
                         await context.OnBatchComplete(context.ExecutionContext, totalRows);
                         writer = await pgConn.BeginBinaryImportAsync(copyCommand);
+                        writer.Timeout = importerTimeout;
                     }
                     else if (context.NotifyAfter > 0 && totalRows % context.NotifyAfter == 0)
                     {
@@ -209,12 +215,13 @@ namespace Flow.Data.Postgres
                     $"Cannot resolve NpgsqlDbType for CLR type {clrType.Name} with destination udt_name '{udtName}'.", null)
             };
 
-        private static async Task<Dictionary<string, string>> QueryUdtNamesAsync(NpgsqlConnection conn, string schema, string table)
+        private static async Task<Dictionary<string, string>> QueryUdtNamesAsync(NpgsqlConnection conn, string schema, string table, int commandTimeout)
         {
             var udtNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             await using var cmd = new NpgsqlCommand(
                 "SELECT column_name, udt_name FROM information_schema.columns WHERE table_schema = @schema AND table_name = @table AND is_generated = 'NEVER'",
                 conn);
+            cmd.CommandTimeout = commandTimeout;
             cmd.Parameters.AddWithValue("schema", schema);
             cmd.Parameters.AddWithValue("table", table);
 

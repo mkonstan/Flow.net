@@ -6,7 +6,7 @@
     <Authors>Maxim Konstantinovski</Authors>
     <Company>TechMA</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <PackageId>Flownet.Data.SqlServer</PackageId>
     <Description>SQL Server data actions for the Flow.net pipeline library. Includes SqlServerExecute and SqlBulkLoadCsv.</Description>
     <PackageTags>pipeline;etl;sqlserver;bulkcopy</PackageTags>
