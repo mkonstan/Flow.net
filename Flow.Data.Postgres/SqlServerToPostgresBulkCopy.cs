@@ -208,6 +208,7 @@ namespace Flow.Data.Postgres
                 "text" => NpgsqlDbType.Text,
                 "varchar" => NpgsqlDbType.Varchar,
                 "bpchar" => NpgsqlDbType.Char,
+                "citext" => NpgsqlDbType.Citext,
                 "xml" => NpgsqlDbType.Xml,
                 "json" => NpgsqlDbType.Json,
                 "jsonb" => NpgsqlDbType.Jsonb,
