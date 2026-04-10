@@ -199,7 +199,7 @@ namespace Flow.Data.Postgres
             _ => null
         };
 
-        private static NpgsqlDbType ResolveAmbiguousType(Type clrType, string udtName, string destinationTable) =>
+        internal static NpgsqlDbType ResolveAmbiguousType(Type clrType, string udtName, string destinationTable) =>
             udtName switch
             {
                 "timestamp" => NpgsqlDbType.Timestamp,
@@ -216,7 +216,7 @@ namespace Flow.Data.Postgres
                     $"Cannot resolve NpgsqlDbType for CLR type {clrType.Name} with destination udt_name '{udtName}'.", null)
             };
 
-        private static async Task<Dictionary<string, string>> QueryUdtNamesAsync(NpgsqlConnection conn, string schema, string table, int commandTimeout)
+        internal static async Task<Dictionary<string, string>> QueryUdtNamesAsync(NpgsqlConnection conn, string schema, string table, int commandTimeout)
         {
             var udtNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             await using var cmd = new NpgsqlCommand(
