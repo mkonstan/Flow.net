@@ -1,5 +1,5 @@
 ﻿using Dapper;
-using Microsoft.SqlServer.Server;
+using Microsoft.Data.SqlClient.Server;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -45,7 +45,7 @@ namespace Flow.Data.SqlServer
 
             private static void Set(IDbDataParameter parameter, IEnumerable<T> data, string typeName)
             {
-                var sqlParam = parameter as System.Data.SqlClient.SqlParameter;
+                var sqlParam = parameter as Microsoft.Data.SqlClient.SqlParameter;
                 if (sqlParam != null)
                 {
                     parameter.Value = CreateSqlDataRecords(data); //(object)CreateDataReader(data) ?? DBNull.Value;

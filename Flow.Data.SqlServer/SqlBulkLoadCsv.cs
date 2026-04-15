@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace Flow.Data.SqlServer
         public string ConnectionString { get; set; }
         public string[] Columns { get; set; }
 
-        protected SqlConnection CreateConnection(string connectionString) { return new System.Data.SqlClient.SqlConnection(connectionString); }
+        protected SqlConnection CreateConnection(string connectionString) { return new Microsoft.Data.SqlClient.SqlConnection(connectionString); }
 
         protected static async Task<IValueSource> HandlerAsync(SqlBulkLoadCsv that, IExecutionContext context, FilePathCollection files)
         { return await HandlerAsync(that, context, files.Cast<FilePath>().ToArray()); }

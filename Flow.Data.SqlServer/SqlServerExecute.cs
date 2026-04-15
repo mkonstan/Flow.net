@@ -6,7 +6,7 @@ namespace Flow.Data.SqlServer
     {
         public CommandType CommandType { get; set; } = CommandType.Text;
 
-        protected override IDbConnection CreateConnection(string connectionString) { return new System.Data.SqlClient.SqlConnection(connectionString); }
+        protected override IDbConnection CreateConnection(string connectionString) { return new Microsoft.Data.SqlClient.SqlConnection(connectionString); }
 
         protected override CommandType? GetCommandType() => CommandType;
     }
@@ -15,7 +15,7 @@ namespace Flow.Data.SqlServer
     {
         public CommandType CommandType { get; set; } = CommandType.Text;
 
-        protected override IDbConnection CreateConnection(string connectionString) { return new System.Data.SqlClient.SqlConnection(connectionString); }
+        protected override IDbConnection CreateConnection(string connectionString) { return new Microsoft.Data.SqlClient.SqlConnection(connectionString); }
 
         protected override CommandType? GetCommandType() => CommandType;
     }
