@@ -346,4 +346,11 @@ healthchecksdb
 _scratch/
 _tools/
 CLAUDE.md
+.claude/
+_kb/
+AGENTS.md
+.mcp.json
+.cr/
+game_rules.md
+claude_code_state.md
 FLOW_NET_CODE_REVIEW.md
