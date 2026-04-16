@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Flow
@@ -12,21 +13,24 @@ namespace Flow
     {
         private readonly ILogger _logger;
 
-        public ExecutionContext(ILogger logger)
-            : this(logger, new State(), new State(), NullResult.Instance)
+        public ExecutionContext(ILogger logger, CancellationToken cancellationToken = default)
+            : this(logger, new State(), new State(), NullResult.Instance, cancellationToken)
         { }
 
         private ExecutionContext(ILogger logger, IExecutionContext context, IValueSource result)
-            : this(logger, context.Scope, context.Session, result)
+            : this(logger, context.Scope, context.Session, result, context.CancellationToken)
         { }
 
-        private ExecutionContext(ILogger logger, IState scope, IState session, IValueSource result)
+        private ExecutionContext(ILogger logger, IState scope, IState session, IValueSource result, CancellationToken cancellationToken = default)
         {
             _logger = logger;
             Scope = new State(scope.GetState());
             Session = session;
             Result = result;
+            CancellationToken = cancellationToken;
         }
+
+        public CancellationToken CancellationToken { get; }
 
         public object this[string name] { get => Scope[name]; set => Scope[name] = value; }
 

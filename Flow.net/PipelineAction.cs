@@ -21,6 +21,7 @@ namespace Flow
         private Guid Id { get; } = Guid.NewGuid();
 
         public IPayloadProvider PayloadProvider { get; set; } = new DefaultPayloadProvider();
+        public IErrorHandler ErrorHandler { get; set; }
 
         protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IValueSource>> handler)
             where TIn : IValueSource
@@ -29,19 +30,29 @@ namespace Flow
         public async Task<IValueSource> ExecuteAsync(IExecutionContext context)
         {
             var input = PayloadProvider.GetPayload(context, this);
-            var type = input.GetType();
-            try
+
+            Func<Task<IValueSource>> work = async () =>
             {
                 await context.LogInfoAsync($"{Name}:{Id} executing");
-                var result = await GetFormatter(type)(context, input);
+                var result = await GetFormatter(input.GetType())(context, input);
                 await context.LogInfoAsync($"{Name}:{Id} completed");
                 return result;
-            }
-            catch (Exception ex)
+            };
+
+            if (ErrorHandler == null)
             {
-                await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = SanitizeForLogging(this), Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
-                throw;
+                try
+                {
+                    return await work();
+                }
+                catch (Exception ex)
+                {
+                    await context.LogErrorAsync($"{Name}:{Id} Failed[{ new { State = SanitizeForLogging(this), Context = context, Payload = input, Exception = ex }.Serialize()}\nERROR:[{ex.Message}]");
+                    throw;
+                }
             }
+
+            return await ErrorHandler.HandledActionAsync(context, this, input, work);
         }
 
         protected virtual Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)

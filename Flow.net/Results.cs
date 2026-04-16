@@ -16,15 +16,6 @@ namespace Flow
         public virtual Type Type => typeof(ValuePrimitive<T>);
     }
 
-    public class ErrorResult : IValueSource
-    {
-        protected ErrorResult(Exception error) { Error = error; }
-
-        Exception Error { get; }
-
-        public Type Type => typeof(ErrorResult);
-    }
-
     public sealed class NullResult : IValueSource
     {
         public static readonly NullResult Instance = new NullResult();

@@ -1707,6 +1707,8 @@ namespace FlowTest
 
         public ExecutionContextForTest(ILogger logger) { _logger = logger; }
 
+        public System.Threading.CancellationToken CancellationToken => System.Threading.CancellationToken.None;
+
         public IState Scope { get; } = new DictState();
         public IState Session { get; } = new DictState();
         public IValueSource Result => _result;

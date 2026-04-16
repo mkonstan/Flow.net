@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Flow
@@ -55,8 +56,8 @@ namespace Flow
                 where T : IPipelineAction, new()
                 => PipelineBuilder.CreateAction<T>();
 
-            public async Task<IValueSource> ExecuteAsync()
-            { return await Create().ExecuteAsync(new ExecutionContext(_logger)); }
+            public async Task<IValueSource> ExecuteAsync(CancellationToken cancellationToken = default)
+            { return await Create().ExecuteAsync(new ExecutionContext(_logger, cancellationToken)); }
 
             public IPipelineBuilder ContinueWith<T>()
                 where T : IPipelineAction, new()
@@ -72,8 +73,8 @@ namespace Flow
 
             public IPipeline Create() { return new Pipeline { Actions = _pipeline }; }
 
-            public async Task<T> ExecuteAsync<T>() where T : IValueSource
-                => (T)await ExecuteAsync();
+            public async Task<T> ExecuteAsync<T>(CancellationToken cancellationToken = default) where T : IValueSource
+                => (T)await ExecuteAsync(cancellationToken);
         }
     }
 }
