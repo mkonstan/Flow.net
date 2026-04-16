@@ -8,6 +8,7 @@ namespace Flow
     {
         IPayloadProvider PayloadProvider { get; set; }
         IErrorHandler ErrorHandler { get; set; }
+        IPipeline OnResult { get; set; }
         Task<IValueSource> ExecuteAsync(IExecutionContext context);
     }
 }

@@ -21,6 +21,21 @@ namespace Flow
             : this(logger, context.Scope, context.Session, result, context.CancellationToken)
         { }
 
+        // Shallow-state-copy ctor — used by PipelineAction.CreateIsolatedContext for the
+        // OnResult side-channel. Copies the parent's Scope and Session DICTIONARIES into
+        // fresh State instances (IState.GetState() returns a fresh Dictionary), so key
+        // reassignments do not leak back to the parent context. Values stored in those
+        // dictionaries are NOT deep-cloned — mutable reference values remain shared with
+        // the parent. Callers wanting full isolation should store only immutable values.
+        // Parent is passed as ILogger because IExecutionContext : ILogger.
+        internal ExecutionContext(IExecutionContext parent, IValueSource payload)
+            : this(parent,
+                   new State(parent.Scope.GetState()),
+                   new State(parent.Session.GetState()),
+                   payload,
+                   parent.CancellationToken)
+        { }
+
         private ExecutionContext(ILogger logger, IState scope, IState session, IValueSource result, CancellationToken cancellationToken = default)
         {
             _logger = logger;

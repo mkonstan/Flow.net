@@ -22,6 +22,7 @@ namespace Flow
 
         public IPayloadProvider PayloadProvider { get; set; } = new DefaultPayloadProvider();
         public IErrorHandler ErrorHandler { get; set; }
+        public IPipeline OnResult { get; set; }
 
         protected void SetTypeHandler<TIn>(Func<IExecutionContext, TIn, Task<IValueSource>> handler)
             where TIn : IValueSource
@@ -30,20 +31,23 @@ namespace Flow
         public async Task<IValueSource> ExecuteAsync(IExecutionContext context)
         {
             var input = PayloadProvider.GetPayload(context, this);
+            bool workSucceeded = false;   // L8 — captured by the work closure; set only on real primary-work success
 
             Func<Task<IValueSource>> work = async () =>
             {
                 await context.LogInfoAsync($"{Name}:{Id} executing");
                 var result = await GetFormatter(input.GetType())(context, input);
                 await context.LogInfoAsync($"{Name}:{Id} completed");
+                workSucceeded = true;
                 return result;
             };
 
+            IValueSource actionResult;
             if (ErrorHandler == null)
             {
                 try
                 {
-                    return await work();
+                    actionResult = await work();
                 }
                 catch (Exception ex)
                 {
@@ -51,9 +55,39 @@ namespace Flow
                     throw;
                 }
             }
+            else
+            {
+                actionResult = await ErrorHandler.HandledActionAsync(context, this, input, work);
+            }
 
-            return await ErrorHandler.HandledActionAsync(context, this, input, work);
+            // L4/L8 — OnResult fires only when primary work actually succeeded.
+            // Handler-recovered values (ContinueHandler NullResult, RetryHandler fallback pipeline output) do NOT trigger it.
+            if (OnResult != null && workSucceeded)
+            {
+                try
+                {
+                    var isolatedCtx = CreateIsolatedContext(context, actionResult);
+                    await OnResult.ExecuteAsync(isolatedCtx);
+                }
+                catch (OperationCanceledException) { throw; }   // L13
+                catch (Exception ex)
+                {
+                    await context.LogWarningAsync($"{Name}:{Id} OnResult failed: {ex.Message}");
+                    // L7 — side-channel failures are non-fatal
+                }
+            }
+
+            return actionResult;   // L6 — always the action's own result
         }
+
+        // L11 — Shallow state copy. Produces a context whose Scope and Session DICTIONARIES
+        // are fresh copies of the parent's, so key reassignments (`scope["k"] = v`) inside
+        // the OnResult pipeline do not leak back to the main flow. Values stored in those
+        // dictionaries are NOT deep-cloned: if you put a mutable reference (List, mutable
+        // DTO, etc.) in Scope/Session, in-place mutation via that reference DOES leak.
+        // Callers that need full isolation should put immutable values in Scope/Session.
+        private static IExecutionContext CreateIsolatedContext(IExecutionContext parent, IValueSource payload)
+            => new ExecutionContext(parent, payload);
 
         protected virtual Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
             => Task.FromException<IValueSource>(

@@ -13,6 +13,7 @@ A .NET pipeline orchestration library with fluent builder, parallel execution, t
 - **ETL base class** - `DbToDbBulkCopy<TSource, TDest>` for database-to-database transfers
 - **Exception hierarchy** - `FlowException`, `ParallelPipelineException`, `BulkCopyException`
 - **Configurable resilience** - per-action `IErrorHandler` with built-in `RetryHandler` (Polly-backed) and `ContinueHandler`, plus optional fallback recovery pipelines
+- **Side-channel `OnResult` pipelines** - attach a pipeline to any action to run telemetry / notifications / audit steps on successful results without mutating the main flow
 
 ## Quick Start
 
@@ -82,7 +83,60 @@ new ProcessRecord
 
 `OperationCanceledException` is non-recoverable — it bypasses all handlers. Implement `IErrorHandler` directly for custom strategies (circuit breaker, bulkhead, telemetry hooks).
 
+## OnResult Side-Channel Pipelines
+
+Attach an `OnResult: IPipeline` to any `IPipelineAction` to run follow-up steps (telemetry, notifications, audit) AFTER the action succeeds. The action's declared return type is preserved — OnResult pipelines cannot mutate the main flow's data.
+
+```csharp
+// Emit metrics on each successful download
+new HttpDownload
+{
+    Url = "...",
+    OnResult = new Pipeline { Actions = new IPipelineAction[]
+    {
+        new LogMetrics { MetricName = "download_size" }
+    }}
+}
+
+// Fan-out side-chain — index each file as a side-effect
+new GetFiles
+{
+    DirectoryPath = "...",
+    OnResult = new Pipeline { Actions = new IPipelineAction[]
+    {
+        new ForEach { Actions = new[] { new IndexFile() } }
+    }}
+}
+// Still returns FilePathCollection to the main flow
+```
+
+**Semantics:**
+
+- Fires ONLY on genuine action success — not on `ErrorHandler`-recovered values (`ContinueHandler` fallback, `RetryHandler` exhaustion fallback pipelines).
+- Returns the action's ORIGINAL result. OnResult pipeline output is discarded.
+- Exceptions from OnResult are logged as warnings and swallowed. The action still returns its result. Exception: `OperationCanceledException` propagates.
+- Runs with a **shallow-isolated** context: Scope and Session dictionaries are cloned (key reassignments don't leak back), but mutable reference values inside them remain shared with the parent. Store immutable values in Scope/Session if full isolation matters.
+
 ## Changelog
+
+### 0.3.0 (2026-04-16)
+
+**Features**
+- Added `OnResult: IPipeline` property on `IPipelineAction` for side-channel follow-up pipelines (telemetry, notifications, audit). Fires only on genuine action success; never on `ErrorHandler`-recovered values. Returns the action's original result; `OnResult` pipeline output is discarded.
+- `OnResult` pipelines run with a shallow-isolated context (see README section for details).
+
+**Compatibility**
+- **Behaviorally additive** for actions deriving from `PipelineAction` — null default means no runtime behavior change.
+- **Source-breaking for consumers that implement `IPipelineAction` directly** — the interface gains a new required `OnResult` property. In practice all in-repo implementors derive from `PipelineAction`; external consumers who wrote custom `IPipelineAction` implementations must add the property.
+
+### 0.2.0 (2026-04-16)
+
+**Features**
+- Added per-`IPipelineAction` resilience via `IErrorHandler`. Built-ins: `RetryHandler` (Polly v8-backed), `ContinueHandler`. Default null = current behavior (zero migration).
+- Added `CancellationToken` to `IExecutionContext` (non-breaking; defaults to `CancellationToken.None`).
+- Added `ErrorPayload` for fallback recovery pipelines.
+
+**Breaking**
 
 ### 0.2.0 (2026-04-16)
 
