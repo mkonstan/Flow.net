@@ -5,7 +5,7 @@
     <RootNamespace>Flow.Data.Postgres</RootNamespace>
     <Authors>Maxim Konstantinovski</Authors>
     <Company>TechMA</Company>
-    <Version>0.1.4</Version>
+    <Version>0.2.0</Version>
     <PackageId>Flownet.Data.Postgres</PackageId>
     <Description>PostgreSQL data actions for the Flow.net pipeline library. Includes PostgresQLExecute and SqlServerToPostgresBulkCopy with Npgsql binary import.</Description>
     <PackageTags>pipeline;etl;postgres;npgsql;bulkcopy</PackageTags>
