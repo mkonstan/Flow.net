@@ -119,6 +119,11 @@ new GetFiles
 
 ## Changelog
 
+### 0.3.1 (2026-04-16)
+
+**Fixes**
+- `QuandlHelpers` JSON deserialization: replaced Newtonsoft `[JsonProperty]` attributes with `[JsonPropertyName]` to match Flurl 4's `System.Text.Json` default serializer. Added explicit property-name mappings on all deserialized types for consistency with `QuandlDataDownloader`. Previously-ignored attributes now correctly bind snake_case JSON fields.
+
 ### 0.3.0 (2026-04-16)
 
 **Features**

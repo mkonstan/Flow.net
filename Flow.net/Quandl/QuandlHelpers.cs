@@ -1,6 +1,6 @@
 ﻿using Flurl;
 using Flurl.Http;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -78,22 +78,25 @@ namespace Flow.Quandl
 
         private class Rootobject
         {
-            [JsonProperty("datatable_bulk_download")]
+            [JsonPropertyName("datatable_bulk_download")]
             public DownloadInfo Download { get; set; }
         }
 
         private class DownloadInfo
         {
+            [JsonPropertyName("file")]
             public DownloadFileInfo File { get; set; }
         }
 
         private class DownloadFileInfo
         {
+            [JsonPropertyName("link")]
             public string Link { get; set; }
 
+            [JsonPropertyName("status")]
             public string Status { get; set; }
 
-            [JsonProperty("data_snapshot_time")]
+            [JsonPropertyName("data_snapshot_time")]
             public string Date { get; set; }
         }
     }
