@@ -30,24 +30,54 @@ namespace Flow
 
         public async Task<IValueSource> ExecuteAsync(IExecutionContext context)
         {
-            var input = PayloadProvider.GetPayload(context, this);
-            bool workSucceeded = false;   // L8 — captured by the work closure; set only on real primary-work success
+            var input = PayloadProvider.GetPayload(context, this);   // L17 — resolve ONCE
+            var execution = await ExecutePrimaryAsync(context, input);
+            await TryRunOnResultAsync(context, execution);
+            return execution.Result;   // L6 — always the action's own result
+        }
 
+        /// <summary>
+        /// Internal result type for ExecuteAsync's phase pipeline.
+        /// SucceededNaturally distinguishes genuine primary-work success from handler-recovered values
+        /// (ContinueHandler's NullResult, RetryHandler's fallback Pipeline output). OnResult fires only
+        /// on natural success (per OnResult L4/L8).
+        /// </summary>
+        private sealed record ActionExecution(IValueSource Result, bool SucceededNaturally);
+
+        /// <summary>
+        /// Runs the action's handler against the resolved input, with entry/exit logging.
+        /// Does NOT catch exceptions — callers are responsible for resilience/recovery.
+        /// </summary>
+        private async Task<IValueSource> ExecuteWorkAsync(IExecutionContext context, IValueSource input)
+        {
+            await context.LogInfoAsync($"{Name}:{Id} executing");
+            var result = await GetFormatter(input.GetType())(context, input);
+            await context.LogInfoAsync($"{Name}:{Id} completed");
+            return result;
+        }
+
+        /// <summary>
+        /// Orchestrates primary work through the ErrorHandler layer (if any).
+        /// Returns SucceededNaturally = true ONLY when the work delegate itself completed —
+        /// handler-recovered values (ContinueHandler NullResult, RetryHandler fallback Pipeline output)
+        /// report SucceededNaturally = false, which gates OnResult downstream.
+        /// </summary>
+        private async Task<ActionExecution> ExecutePrimaryAsync(IExecutionContext context, IValueSource input)
+        {
+            bool succeeded = false;   // scope: this method only
             Func<Task<IValueSource>> work = async () =>
             {
-                await context.LogInfoAsync($"{Name}:{Id} executing");
-                var result = await GetFormatter(input.GetType())(context, input);
-                await context.LogInfoAsync($"{Name}:{Id} completed");
-                workSucceeded = true;
-                return result;
+                var r = await ExecuteWorkAsync(context, input);
+                succeeded = true;
+                return r;
             };
 
-            IValueSource actionResult;
             if (ErrorHandler == null)
             {
                 try
                 {
-                    actionResult = await work();
+                    var result = await work();
+                    return new ActionExecution(result, succeeded);
                 }
                 catch (Exception ex)
                 {
@@ -55,29 +85,34 @@ namespace Flow
                     throw;
                 }
             }
-            else
-            {
-                actionResult = await ErrorHandler.HandledActionAsync(context, this, input, work);
-            }
 
-            // L4/L8 — OnResult fires only when primary work actually succeeded.
-            // Handler-recovered values (ContinueHandler NullResult, RetryHandler fallback pipeline output) do NOT trigger it.
-            if (OnResult != null && workSucceeded)
-            {
-                try
-                {
-                    var isolatedCtx = CreateIsolatedContext(context, actionResult);
-                    await OnResult.ExecuteAsync(isolatedCtx);
-                }
-                catch (OperationCanceledException) { throw; }   // L13
-                catch (Exception ex)
-                {
-                    await context.LogWarningAsync($"{Name}:{Id} OnResult failed: {ex.Message}");
-                    // L7 — side-channel failures are non-fatal
-                }
-            }
+            // ErrorHandler != null: handler drives invocation, may recover from failures.
+            // succeeded is true IFF work() ran to completion before handler returned.
+            var handlerResult = await ErrorHandler.HandledActionAsync(context, this, input, work);
+            return new ActionExecution(handlerResult, succeeded);
+        }
 
-            return actionResult;   // L6 — always the action's own result
+        /// <summary>
+        /// Runs the OnResult pipeline as a side-channel IFF the primary work succeeded naturally.
+        /// Per OnResult L4/L8, handler-recovered values do NOT trigger OnResult.
+        /// Exceptions from OnResult are logged as warnings and swallowed (L7),
+        /// except OperationCanceledException which propagates (L13).
+        /// </summary>
+        private async Task TryRunOnResultAsync(IExecutionContext context, ActionExecution execution)
+        {
+            if (OnResult == null || !execution.SucceededNaturally) return;
+
+            try
+            {
+                var isolatedCtx = CreateIsolatedContext(context, execution.Result);
+                await OnResult.ExecuteAsync(isolatedCtx);
+            }
+            catch (OperationCanceledException) { throw; }   // L13
+            catch (Exception ex)
+            {
+                await context.LogWarningAsync($"{Name}:{Id} OnResult failed: {ex.Message}");
+                // L7 — side-channel failures are non-fatal
+            }
         }
 
         // L11 — Shallow state copy. Produces a context whose Scope and Session DICTIONARIES
