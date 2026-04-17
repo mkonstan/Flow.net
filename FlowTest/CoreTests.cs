@@ -1371,7 +1371,7 @@ namespace FlowTest
             var logger = new TestLogger();
             var builder = new PipelineBuilder(logger);
 
-            var pipeline = new Pipeline { Actions = Array.Empty<IPipelineAction>() };
+            var pipeline = PipelineBuilder.CreatePipeline();
             var ctx = new ExecutionContextForTest(logger)
                 .WithResult(new ValuePrimitive<string>("unchanged"));
 
@@ -1728,7 +1728,11 @@ namespace FlowTest
         public async Task Pipeline_NullActions_ThrowsActionConfigurationException()
         {
             var logger = new TestLogger();
-            var pipeline = new Pipeline();
+            var pipeline = PipelineBuilder.CreatePipeline();
+            // Factory guarantees non-null Actions; explicitly reset to null here to exercise
+            // Pipeline.DefaultHandlerAsync's null-Actions guard (a Pipeline-class invariant distinct
+            // from the factory postcondition). Without this, the test would vacuously pass.
+            pipeline.Actions = null;
             var ctx = new ExecutionContextForTest(logger).WithResult(NullResult.Instance);
 
             await Assert.ThrowsExceptionAsync<ActionConfigurationException>(

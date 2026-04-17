@@ -175,7 +175,7 @@ namespace FlowTest
             var action = new ReturnConstantAction
             {
                 Value = expected,
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             var result = await action.ExecuteAsync(_context);
             Assert.IsTrue(capture.WasCalled);
@@ -189,7 +189,7 @@ namespace FlowTest
             var capture = new CaptureAction();
             var action = new ThrowingAction
             {
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 () => action.ExecuteAsync(_context));
@@ -204,7 +204,7 @@ namespace FlowTest
             var action = new ThrowingAction
             {
                 ErrorHandler = new ContinueHandler(),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             var result = await action.ExecuteAsync(_context);
             Assert.IsInstanceOfType(result, typeof(NullResult));
@@ -224,9 +224,9 @@ namespace FlowTest
                     MaxAttempts = 2,
                     InitialBackoff = TimeSpan.FromMilliseconds(1),
                     BackoffMultiplier = 1.0,
-                    Pipeline = new Pipeline { Actions = new IPipelineAction[] { fallbackCapture } }
+                    Pipeline = PipelineBuilder.CreatePipeline(fallbackCapture)
                 },
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             await action.ExecuteAsync(_context);
             Assert.IsNotNull(fallbackCapture.CapturedPayload, "Fallback pipeline must have fired.");
@@ -247,7 +247,7 @@ namespace FlowTest
                     InitialBackoff = TimeSpan.FromMilliseconds(1),
                     BackoffMultiplier = 1.0
                 },
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             await counting.ExecuteAsync(_context);
             Assert.AreEqual(3, counting.CallCount);
@@ -263,7 +263,7 @@ namespace FlowTest
             var action = new ReturnConstantAction
             {
                 Value = actionResult,
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             await action.ExecuteAsync(_context);
             Assert.AreSame(actionResult, capture.CapturedInput);
@@ -366,7 +366,7 @@ namespace FlowTest
             var action = new ReturnConstantAction
             {
                 Value = new ValuePrimitive<string>("ok"),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { side } }
+                OnResult = PipelineBuilder.CreatePipeline(side)
             };
             await action.ExecuteAsync(_context);
             Assert.AreEqual("parent", _context.Scope["k"], "Parent Scope must not reflect child's write.");
@@ -388,7 +388,7 @@ namespace FlowTest
             var action = new ReturnConstantAction
             {
                 Value = new ValuePrimitive<string>("ok"),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { side } }
+                OnResult = PipelineBuilder.CreatePipeline(side)
             };
             await action.ExecuteAsync(_context);
             Assert.AreEqual("parent", _context.Session["k"], "Parent Session must not reflect child's write.");
@@ -429,12 +429,12 @@ namespace FlowTest
             var innerAction = new ReturnConstantAction
             {
                 Value = new ValuePrimitive<string>("inner"),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                OnResult = PipelineBuilder.CreatePipeline(capture)
             };
             var outerAction = new ReturnConstantAction
             {
                 Value = new ValuePrimitive<string>("outer"),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { innerAction } }
+                OnResult = PipelineBuilder.CreatePipeline(innerAction)
             };
             await outerAction.ExecuteAsync(_context);
             Assert.IsTrue(capture.WasCalled);
@@ -448,7 +448,7 @@ namespace FlowTest
             var action = new ReturnConstantAction
             {
                 Value = new ValuePrimitive<string>("ok"),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { snapshot } }
+                OnResult = PipelineBuilder.CreatePipeline(snapshot)
             };
             await action.ExecuteAsync(_context);
             Assert.IsNotNull(snapshot.InfosSnapshot);
@@ -474,7 +474,7 @@ namespace FlowTest
             var action = new ReturnConstantAction
             {
                 Value = new ValuePrimitive<string>("ok"),
-                OnResult = new Pipeline { Actions = new IPipelineAction[] { mutator } }
+                OnResult = PipelineBuilder.CreatePipeline(mutator)
             };
 
             await action.ExecuteAsync(_context);

@@ -29,6 +29,48 @@ namespace Flow
             return action;
         }
 
+        /// <summary>
+        /// Create an empty pipeline, ready for actions to be added via fluent helpers.
+        /// </summary>
+        public static IPipeline CreatePipeline()
+            => new Pipeline { Actions = Array.Empty<IPipelineAction>() };
+
+        /// <summary>
+        /// Create a pipeline from the given actions (sequential).
+        /// Accepts null or empty — both produce an empty pipeline (valid no-op).
+        /// </summary>
+        public static IPipeline CreatePipeline(params IPipelineAction[] actions)
+            => new Pipeline { Actions = actions ?? Array.Empty<IPipelineAction>() };
+
+        /// <summary>
+        /// Create a pipeline configured by a callback.
+        /// Prefer the <c>AddAction&lt;T&gt;</c> extension methods inside <paramref name="body"/>
+        /// over direct <c>Actions</c> assignment. If the callback leaves <c>Actions</c> null
+        /// (e.g. by reassigning to null), the factory normalizes it to an empty array so
+        /// returned pipelines always satisfy the non-null-<c>Actions</c> invariant.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="body"/> is null.</exception>
+        public static IPipeline CreatePipeline(Action<IPipeline> body)
+        {
+            if (body == null) throw new ArgumentNullException(nameof(body));
+            var pipeline = CreatePipeline();
+            body(pipeline);
+            if (pipeline.Actions == null)
+                pipeline.Actions = Array.Empty<IPipelineAction>();
+            return pipeline;
+        }
+
+        /// <summary>
+        /// Create a pipeline containing a single action of type T, configured by body.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="body"/> is null.</exception>
+        public static IPipeline CreatePipeline<T>(Action<T> body)
+            where T : IPipelineAction, new()
+        {
+            if (body == null) throw new ArgumentNullException(nameof(body));
+            return CreatePipeline(CreateAction(body));
+        }
+
         public IPipelineBuilder StartWith<T>()
             where T : IPipelineAction, new()
             => StartWith<T>(_ => { });
@@ -71,7 +113,7 @@ namespace Flow
                 return new Builder(_logger, _pipeline.Append(CreateAction(body)));
             }
 
-            public IPipeline Create() { return new Pipeline { Actions = _pipeline }; }
+            public IPipeline Create() { return PipelineBuilder.CreatePipeline(_pipeline.ToArray()); }
 
             public async Task<T> ExecuteAsync<T>(CancellationToken cancellationToken = default) where T : IValueSource
                 => (T)await ExecuteAsync(cancellationToken);

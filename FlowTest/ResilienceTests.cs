@@ -169,7 +169,7 @@ namespace FlowTest
             {
                 ErrorHandler = new ContinueHandler
                 {
-                    Pipeline = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                    Pipeline = PipelineBuilder.CreatePipeline(capture)
                 }
             };
             var result = await action.ExecuteAsync(_context);
@@ -243,7 +243,7 @@ namespace FlowTest
                     MaxAttempts = 2,
                     InitialBackoff = TimeSpan.FromMilliseconds(1),
                     BackoffMultiplier = 1.0,
-                    Pipeline = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                    Pipeline = PipelineBuilder.CreatePipeline(capture)
                 }
             };
             await action.ExecuteAsync(_context);
@@ -324,7 +324,7 @@ namespace FlowTest
                 {
                     MaxAttempts = 3,
                     InitialBackoff = TimeSpan.FromMilliseconds(1),
-                    Pipeline = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                    Pipeline = PipelineBuilder.CreatePipeline(capture)
                 }
             };
             await Assert.ThrowsExceptionAsync<OperationCanceledException>(
@@ -353,7 +353,7 @@ namespace FlowTest
             {
                 ErrorHandler = new ContinueHandler
                 {
-                    Pipeline = new Pipeline { Actions = new IPipelineAction[] { capture } }
+                    Pipeline = PipelineBuilder.CreatePipeline(capture)
                 }
             };
             await Assert.ThrowsExceptionAsync<OperationCanceledException>(
@@ -420,7 +420,7 @@ namespace FlowTest
                 },
                 ErrorHandler = new ContinueHandler
                 {
-                    Pipeline = new Pipeline { Actions = new IPipelineAction[] { outerCapture } }
+                    Pipeline = PipelineBuilder.CreatePipeline(outerCapture)
                 }
             };
             var ctx = _context.New(items);

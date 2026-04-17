@@ -51,7 +51,7 @@ namespace Flow
         {
             if (actions == null || actions.Length == 0)
                 throw new ArgumentException("At least one action is required.", nameof(actions));
-            _pipelines.Add(new Pipeline { Actions = actions });
+            _pipelines.Add(PipelineBuilder.CreatePipeline(actions));
             return this;
         }
 
