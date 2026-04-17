@@ -1,49 +1,81 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Flow
 {
     /// <summary>
-    /// Executes Actions in parallel batches. Each action receives the same input.
-    /// Action instances are invoked concurrently — actions must be stateless/thread-safe.
+    /// Executes Pipelines in parallel with a semaphore-gated concurrency cap. Each pipeline receives the same input.
+    /// Pipeline instances are invoked concurrently — pipelines (and their actions) must be stateless/thread-safe.
     /// </summary>
-    public class ParallelPipeline : PipelineAction, IPipeline
+    public class ParallelPipeline : PipelineAction
     {
         public static readonly int ProcessorCount = Environment.ProcessorCount;
 
+        private readonly List<IPipeline> _pipelines = new List<IPipeline>();
+
         public int MaxDegreeOfParallelism { get; set; } = ProcessorCount;
-        public IEnumerable<IPipelineAction> Actions { get; set; }
+
+        /// <summary>
+        /// Pipelines to run in parallel. Each receives the same input.
+        /// Setter replaces the list contents (does not merge).
+        /// </summary>
+        public IEnumerable<IPipeline> Pipelines
+        {
+            get => _pipelines;
+            set
+            {
+                _pipelines.Clear();
+                if (value != null) _pipelines.AddRange(value);
+            }
+        }
+
+        /// <summary>
+        /// Add a pre-built pipeline as a parallel branch. Chainable.
+        /// </summary>
+        public ParallelPipeline AddPipeline(IPipeline pipeline)
+        {
+            if (pipeline == null) throw new ArgumentNullException(nameof(pipeline));
+            _pipelines.Add(pipeline);
+            return this;
+        }
+
+        /// <summary>
+        /// Add a new single-step pipeline wrapping the given actions (sequential within the branch).
+        /// Common case: one action per branch — <c>AddPipeline(new SendMetric())</c>.
+        /// Multi-action case: sequential sub-pipeline — <c>AddPipeline(new LogAudit(), new Notify())</c>.
+        /// Chainable.
+        /// </summary>
+        public ParallelPipeline AddPipeline(params IPipelineAction[] actions)
+        {
+            if (actions == null || actions.Length == 0)
+                throw new ArgumentException("At least one action is required.", nameof(actions));
+            _pipelines.Add(new Pipeline { Actions = actions });
+            return this;
+        }
 
         protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
         {
-            if (Actions == null)
-                throw new ActionConfigurationException(GetType().Name, "Actions must be set before execution.");
+            if (_pipelines.Count == 0)
+                throw new ActionConfigurationException(GetType().Name,
+                    "Pipelines must be set (or added via AddPipeline) before execution.");
 
-            int maxDegreeOfParallelism = MaxDegreeOfParallelism <= 0 ? ProcessorCount : MaxDegreeOfParallelism;
-            var actions = Actions.ToArray();
-            var results = new List<IValueSource>();
-
-            // Process in batches of maxDegreeOfParallelism
-            for (int i = 0; i < actions.Length; i += maxDegreeOfParallelism)
+            try
             {
-                var batch = actions.Skip(i).Take(maxDegreeOfParallelism);
-                var whenAll = Task.WhenAll(batch.Select(a => a.ExecuteAsync(context.New(input))));
-                try
-                {
-                    results.AddRange(await whenAll);
-                }
-                catch
-                {
-                    throw new ParallelPipelineException(
-                        $"One or more actions failed in ParallelPipeline ({whenAll.Exception.InnerExceptions.Count} failure(s)).",
-                        whenAll.Exception);
-                }
+                var results = await ParallelExecution.RunWithConcurrencyCapAsync(
+                    _pipelines,
+                    MaxDegreeOfParallelism,
+                    p => p.ExecuteAsync(context.New(input)),
+                    context.CancellationToken);
+                return new PayloadCollection(results);
             }
-
-            return new PayloadCollection(results);
+            catch (AggregateException agg)
+            {
+                throw new ParallelPipelineException(
+                    $"One or more pipelines failed in ParallelPipeline ({agg.InnerExceptions.Count} failure(s)).",
+                    agg);
+            }
         }
     }
 }

@@ -174,6 +174,21 @@ namespace FlowTest
         public static void Reset() => StartTimes.Clear();
     }
 
+    // Delay derived from the input ValuePrimitive<int>. Enables per-element delays
+    // in ParallelForEach tests where the single Action instance is shared across elements.
+    class DelayByInputAction : PipelineAction
+    {
+        protected override async Task<IValueSource> DefaultHandlerAsync(IExecutionContext context, IValueSource input)
+        {
+            if (input is ValuePrimitive<int> ms)
+            {
+                await Task.Delay(ms.Value);
+                return ms;
+            }
+            return input;
+        }
+    }
+
     #endregion
 
     // =========================================================================
@@ -564,12 +579,9 @@ namespace FlowTest
             await builder
                 .StartWith<ParallelPipeline>(op =>
                 {
-                    op.Actions = new IPipelineAction[]
-                    {
-                        PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 1),
-                        PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 2),
-                        PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 3),
-                    };
+                    op.AddPipeline(PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 1))
+                      .AddPipeline(PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 2))
+                      .AddPipeline(PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 3));
                 })
                 .ExecuteAsync();
 
@@ -588,11 +600,8 @@ namespace FlowTest
             var result = await builder
                 .StartWith<ParallelPipeline>(op =>
                 {
-                    op.Actions = new IPipelineAction[]
-                    {
-                        PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = new ValuePrimitive<int>(1)),
-                        PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = new ValuePrimitive<int>(2)),
-                    };
+                    op.AddPipeline(PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = new ValuePrimitive<int>(1)))
+                      .AddPipeline(PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = new ValuePrimitive<int>(2)));
                 })
                 .ExecuteAsync();
 
@@ -603,8 +612,8 @@ namespace FlowTest
         [TestMethod]
         public async Task ParallelPipeline_ActuallyRunsConcurrently()
         {
-            // This test verifies whether ParallelPipeline actually runs in parallel
-            // Each action takes ~100ms. If sequential, total > 300ms. If parallel, ~100ms.
+            // Each action sleeps 50ms. With true concurrency, 3 actions on MaxDoP >= 3
+            // should complete in ~50ms. Sequential would be ~150ms. Assert < 120ms.
             TrackExecutionAction.Reset();
             var logger = new TestLogger();
             var builder = new PipelineBuilder(logger);
@@ -613,28 +622,188 @@ namespace FlowTest
             await builder
                 .StartWith<ParallelPipeline>(op =>
                 {
-                    op.Actions = new IPipelineAction[]
-                    {
-                        PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 1),
-                        PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 2),
-                        PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 3),
-                    };
+                    op.AddPipeline(PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 1))
+                      .AddPipeline(PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 2))
+                      .AddPipeline(PipelineBuilder.CreateAction<TrackExecutionAction>(a => a.Order = 3));
                 })
                 .ExecuteAsync();
             sw.Stop();
 
-            // NOTE: Due to the GroupBy bug in ParallelPipeline, this may actually be sequential.
-            // If elapsed > 140ms, it's likely sequential. If < 100ms, it's parallel.
-            // This test documents the ACTUAL behavior.
             var elapsed = sw.ElapsedMilliseconds;
-            Trace.WriteLine($"ParallelPipeline 3 actions took {elapsed}ms (expect ~50ms if parallel, ~150ms if sequential)");
+            Trace.WriteLine($"ParallelPipeline 3 actions took {elapsed}ms (expect ~50ms parallel, ~150ms sequential)");
 
-            // We assert all actions ran, but flag if it was sequential
             Assert.AreEqual(3, TrackExecutionAction.Executions.Count);
-            if (elapsed > 120)
-            {
-                Trace.TraceWarning($"POTENTIAL BUG: ParallelPipeline appears sequential ({elapsed}ms for 3x50ms actions)");
-            }
+            Assert.IsTrue(elapsed < 120,
+                $"Expected parallel execution (<120ms) but took {elapsed}ms for 3x50ms actions");
+        }
+
+        [TestMethod]
+        public async Task ParallelPipeline_RespectsMaxDegreeOfParallelism()
+        {
+            // 10 pipelines, MaxDoP=3, each 50ms work.
+            // With a true concurrency cap: ceil(10/3) * 50ms = 4 waves * 50ms = ~200ms.
+            // Batched implementation would land in the same ballpark but with higher variance
+            // under straggler load — this test primarily proves the cap caps AND parallelizes.
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var sw = Stopwatch.StartNew();
+            await builder
+                .StartWith<ParallelPipeline>(op =>
+                {
+                    op.MaxDegreeOfParallelism = 3;
+                    for (int i = 0; i < 10; i++)
+                        op.AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 0; }));
+                })
+                .ExecuteAsync();
+            sw.Stop();
+
+            // 10 items through a cap of 3 at 50ms each = at least 150ms (3 full waves + partial).
+            // Upper bound allows scheduler slack.
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 150,
+                $"Expected at least ~150ms with MaxDoP=3 for 10x50ms, got {sw.ElapsedMilliseconds}ms");
+            Assert.IsTrue(sw.ElapsedMilliseconds < 400,
+                $"Expected cap to parallelize (<400ms) for 10x50ms with MaxDoP=3, got {sw.ElapsedMilliseconds}ms");
+        }
+
+        [TestMethod]
+        public void ParallelPipeline_AddPipeline_WithIPipeline()
+        {
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var sub1 = builder.StartWith<ReturnValueAction>(op => op.Value = new ValuePrimitive<int>(10)).Create();
+            var sub2 = builder.StartWith<ReturnValueAction>(op => op.Value = new ValuePrimitive<int>(20)).Create();
+
+            var parallel = new ParallelPipeline();
+            var returned = parallel.AddPipeline(sub1).AddPipeline(sub2);
+
+            Assert.AreSame(parallel, returned, "AddPipeline should return the instance for chaining");
+            Assert.AreEqual(2, parallel.Pipelines.Count());
+            Assert.AreSame(sub1, parallel.Pipelines.ElementAt(0));
+            Assert.AreSame(sub2, parallel.Pipelines.ElementAt(1));
+        }
+
+        [TestMethod]
+        public void ParallelPipeline_AddPipeline_WithActions()
+        {
+            var parallel = new ParallelPipeline();
+            var a1 = PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = new ValuePrimitive<int>(1));
+            var a2 = PipelineBuilder.CreateAction<AddSuffixAction>(a => a.Suffix = "!");
+
+            parallel.AddPipeline(a1, a2);
+
+            Assert.AreEqual(1, parallel.Pipelines.Count());
+            var wrapped = parallel.Pipelines.Single();
+            Assert.IsInstanceOfType(wrapped, typeof(Pipeline));
+            var wrappedActions = wrapped.Actions.ToArray();
+            Assert.AreEqual(2, wrappedActions.Length);
+            Assert.AreSame(a1, wrappedActions[0]);
+            Assert.AreSame(a2, wrappedActions[1]);
+        }
+
+        [TestMethod]
+        public void ParallelPipeline_AddPipeline_MixedOverloads()
+        {
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var pre = builder.StartWith<ReturnValueAction>(op => op.Value = new ValuePrimitive<int>(1)).Create();
+            var bareAction = PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = new ValuePrimitive<int>(2));
+
+            var parallel = new ParallelPipeline();
+            parallel.AddPipeline(pre).AddPipeline(bareAction);
+
+            Assert.AreEqual(2, parallel.Pipelines.Count());
+            Assert.AreSame(pre, parallel.Pipelines.ElementAt(0), "First slot should be the pre-built IPipeline");
+            Assert.IsInstanceOfType(parallel.Pipelines.ElementAt(1), typeof(Pipeline));
+            Assert.AreSame(bareAction, parallel.Pipelines.ElementAt(1).Actions.Single());
+        }
+
+        [TestMethod]
+        public void ParallelPipeline_PipelinesSetter_ReplacesList()
+        {
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var sub1 = builder.StartWith<ReturnValueAction>(op => op.Value = new ValuePrimitive<int>(1)).Create();
+            var sub2 = builder.StartWith<ReturnValueAction>(op => op.Value = new ValuePrimitive<int>(2)).Create();
+            var sub3 = builder.StartWith<ReturnValueAction>(op => op.Value = new ValuePrimitive<int>(3)).Create();
+
+            var parallel = new ParallelPipeline();
+            parallel.AddPipeline(sub1);
+
+            // Assign a new list — must replace, not merge.
+            parallel.Pipelines = new IPipeline[] { sub2, sub3 };
+
+            Assert.AreEqual(2, parallel.Pipelines.Count());
+            Assert.IsFalse(parallel.Pipelines.Contains(sub1), "Setter must clear previous entries");
+            Assert.AreSame(sub2, parallel.Pipelines.ElementAt(0));
+            Assert.AreSame(sub3, parallel.Pipelines.ElementAt(1));
+        }
+
+        [TestMethod]
+        public async Task ParallelPipeline_SlowPipelineDoesNotBlockOthers()
+        {
+            // Regression test for the batching bug. With the batched implementation,
+            // one slow pipeline blocked a whole batch. With semaphore-gated concurrency,
+            // 4 pipelines at MaxDoP=4 should complete in ~max(durations), not sum-of-durations.
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var sw = Stopwatch.StartNew();
+            await builder
+                .StartWith<ParallelPipeline>(op =>
+                {
+                    op.MaxDegreeOfParallelism = 4;
+                    op.AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 500; a.Index = 0; }))
+                      .AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 1; }))
+                      .AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 2; }))
+                      .AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 3; }));
+                })
+                .ExecuteAsync();
+            sw.Stop();
+
+            // True parallelism: ~500ms. Sequential: 650ms. Assert well under 650ms.
+            Assert.IsTrue(sw.ElapsedMilliseconds < 600,
+                $"Slow branch should not block others — expected ~500ms, got {sw.ElapsedMilliseconds}ms");
+        }
+
+        [TestMethod]
+        public void ParallelPipeline_AddPipeline_NullPipeline_Throws()
+        {
+            var parallel = new ParallelPipeline();
+            Assert.ThrowsException<ArgumentNullException>(() => parallel.AddPipeline((IPipeline)null));
+        }
+
+        [TestMethod]
+        public void ParallelPipeline_AddPipeline_EmptyActions_Throws()
+        {
+            var parallel = new ParallelPipeline();
+            Assert.ThrowsException<ArgumentException>(() => parallel.AddPipeline(new IPipelineAction[0]));
+        }
+
+        [TestMethod]
+        public async Task ParallelPipeline_MaxDop1_RunsSequentially()
+        {
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var sw = Stopwatch.StartNew();
+            await builder
+                .StartWith<ParallelPipeline>(op =>
+                {
+                    op.MaxDegreeOfParallelism = 1;
+                    op.AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 0; }))
+                      .AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 1; }))
+                      .AddPipeline(PipelineBuilder.CreateAction<DelayAction>(a => { a.DelayMs = 50; a.Index = 2; }));
+                })
+                .ExecuteAsync();
+            sw.Stop();
+
+            // MaxDoP=1 forces strict serialization: ~150ms.
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 140,
+                $"MaxDoP=1 should serialize — expected >=140ms for 3x50ms, got {sw.ElapsedMilliseconds}ms");
         }
     }
 
@@ -774,7 +943,8 @@ namespace FlowTest
             var result = await builder
                 .StartWith<ParallelPipeline>(op =>
                 {
-                    op.Actions = new IPipelineAction[] { sub1, sub2 };
+                    op.AddPipeline(sub1)
+                      .AddPipeline(sub2);
                 })
                 .ExecuteAsync();
 
@@ -1035,6 +1205,43 @@ namespace FlowTest
             Assert.IsTrue(sw.ElapsedMilliseconds < 500,
                 $"Took too long ({sw.ElapsedMilliseconds}ms) — something is wrong");
         }
+
+        [TestMethod]
+        public async Task ParallelForEach_SlowElementDoesNotBlockOthers()
+        {
+            // Regression test for the batching bug that previously existed in ParallelForEach.
+            // One slow element used to hold a whole batch. With semaphore-gated concurrency,
+            // 4 elements at MaxDoP=4 should complete in ~max(delays), not sum-of-delays.
+            var logger = new TestLogger();
+            var builder = new PipelineBuilder(logger);
+
+            var input = new PayloadCollection(new IValueSource[]
+            {
+                new ValuePrimitive<int>(500),
+                new ValuePrimitive<int>(50),
+                new ValuePrimitive<int>(50),
+                new ValuePrimitive<int>(50),
+            });
+
+            var sw = Stopwatch.StartNew();
+            await builder
+                .StartWith<ReturnValueAction>(op => op.Value = input)
+                .ContinueWith<ParallelForEach>(op =>
+                {
+                    op.MaxDegreeOfParallelism = 4;
+                    op.Actions = new IPipelineAction[]
+                    {
+                        PipelineBuilder.CreateAction<DelayByInputAction>()
+                    };
+                })
+                .ExecuteAsync();
+            sw.Stop();
+
+            // True parallelism: ~500ms. Sequential: 650ms. Previous batching bug would
+            // stall on the 500ms element even at MaxDoP=4.
+            Assert.IsTrue(sw.ElapsedMilliseconds < 600,
+                $"Slow element should not block others — expected ~500ms, got {sw.ElapsedMilliseconds}ms");
+        }
     }
 
     // =========================================================================
@@ -1258,12 +1465,9 @@ namespace FlowTest
                 await builder
                     .StartWith<ParallelPipeline>(op =>
                     {
-                        op.Actions = new IPipelineAction[]
-                        {
-                            PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = NullResult.Instance),
-                            PipelineBuilder.CreateAction<FailingAction>(a => a.ErrorMessage = "branch2 failed"),
-                            PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = NullResult.Instance),
-                        };
+                        op.AddPipeline(PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = NullResult.Instance))
+                          .AddPipeline(PipelineBuilder.CreateAction<FailingAction>(a => a.ErrorMessage = "branch2 failed"))
+                          .AddPipeline(PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = NullResult.Instance));
                     })
                     .ExecuteAsync();
             });
@@ -1286,15 +1490,12 @@ namespace FlowTest
                     .StartWith<ParallelPipeline>(op =>
                     {
                         op.MaxDegreeOfParallelism = 3;
-                        op.Actions = new IPipelineAction[]
-                        {
-                            PipelineBuilder.CreateAction<DelayedFailingAction>(a =>
-                                { a.ErrorMessage = "fail_A"; a.DelayMs = 10; }),
-                            PipelineBuilder.CreateAction<DelayedFailingAction>(a =>
-                                { a.ErrorMessage = "fail_B"; a.DelayMs = 20; }),
-                            PipelineBuilder.CreateAction<DelayedFailingAction>(a =>
-                                { a.ErrorMessage = "fail_C"; a.DelayMs = 30; }),
-                        };
+                        op.AddPipeline(PipelineBuilder.CreateAction<DelayedFailingAction>(a =>
+                              { a.ErrorMessage = "fail_A"; a.DelayMs = 10; }))
+                          .AddPipeline(PipelineBuilder.CreateAction<DelayedFailingAction>(a =>
+                              { a.ErrorMessage = "fail_B"; a.DelayMs = 20; }))
+                          .AddPipeline(PipelineBuilder.CreateAction<DelayedFailingAction>(a =>
+                              { a.ErrorMessage = "fail_C"; a.DelayMs = 30; }));
                     })
                     .ExecuteAsync();
             });
@@ -1394,11 +1595,8 @@ namespace FlowTest
                     .StartWith<ReturnValueAction>(op => op.Value = NullResult.Instance)
                     .ContinueWith<ParallelPipeline>(op =>
                     {
-                        op.Actions = new IPipelineAction[]
-                        {
-                            innerPipeline,
-                            PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = NullResult.Instance),
-                        };
+                        op.AddPipeline(innerPipeline)
+                          .AddPipeline(PipelineBuilder.CreateAction<ReturnValueAction>(a => a.Value = NullResult.Instance));
                     })
                     .ExecuteAsync();
             });
@@ -1554,7 +1752,7 @@ namespace FlowTest
         }
 
         [TestMethod]
-        public async Task ParallelPipeline_NullActions_ThrowsActionConfigurationException()
+        public async Task ParallelPipeline_NoPipelines_ThrowsActionConfigurationException()
         {
             var logger = new TestLogger();
             var pipeline = new ParallelPipeline();

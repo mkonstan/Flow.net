@@ -119,6 +119,20 @@ new GetFiles
 
 ## Changelog
 
+### 0.4.0 (2026-04-16)
+
+**Features / redesign**
+- **`ParallelPipeline`** redesigned. The property is now `IEnumerable<IPipeline> Pipelines` (was `IEnumerable<IPipelineAction> Actions`). Each branch is explicitly a `Pipeline`. Fluent `AddPipeline(IPipeline)` and `AddPipeline(params IPipelineAction[])` overloads support both pre-built pipelines and bare-action fan-out. Class no longer implements `IPipeline` — it is `: PipelineAction` only, which is honest about its semantics (parallel independent pipelines, not sequential actions).
+- **`ParallelExecution.RunWithConcurrencyCapAsync`** — new internal helper centralizing semaphore-gated parallelism. Used by both `ParallelPipeline` and `ParallelForEach`. One place to fix concurrency/cancellation semantics going forward.
+
+**Fixes**
+- **True concurrency in `ParallelPipeline` and `ParallelForEach`.** Previous implementation batched work in groups of `MaxDegreeOfParallelism` and waited for each group to fully complete before starting the next — a slow action in one batch would stall all cores instead of yielding to the next batch. Both types now use a semaphore-gated cap so all work starts immediately and the cap gates execution.
+- Cancellation is honored cleanly in both types — `OperationCanceledException` propagates without being wrapped in the respective aggregate exception types.
+
+**Compatibility**
+- **Source-breaking for `ParallelPipeline` direct consumers:** `Actions` property removed in favor of `Pipelines`; `IPipeline` interface no longer implemented. Migration: use the fluent `AddPipeline` overloads or assign `Pipelines = new IPipeline[] { ... }`.
+- **Silent correctness fix for `ParallelForEach` consumers:** API surface unchanged (`Actions`, `IPipeline`, `PayloadCollection` input all preserved). Behavior changes from batched to true concurrency — slow elements no longer block other work.
+
 ### 0.3.1 (2026-04-16)
 
 **Fixes**

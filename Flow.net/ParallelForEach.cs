@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -29,36 +28,32 @@ namespace Flow
             if (that.Actions == null)
                 throw new ActionConfigurationException(that.GetType().Name, "Actions must be set before execution.");
 
-            int maxDop = that.MaxDegreeOfParallelism <= 0 ? ProcessorCount : that.MaxDegreeOfParallelism;
             var elements = input.ToArray();
             var actions = that.Actions.ToArray();
-            var results = new IValueSource[elements.Length];
 
-            for (int i = 0; i < elements.Length; i += maxDop)
+            try
             {
-                var batch = Enumerable.Range(i, Math.Min(maxDop, elements.Length - i));
-                var whenAll = Task.WhenAll(batch.Select(async idx =>
-                {
-                    var e = elements[idx];
-                    foreach (var action in actions)
+                var results = await ParallelExecution.RunWithConcurrencyCapAsync(
+                    elements,
+                    that.MaxDegreeOfParallelism,
+                    async element =>
                     {
-                        e = await action.ExecuteAsync(context.New(e));
-                    }
-                    results[idx] = e;
-                }));
-                try
-                {
-                    await whenAll;
-                }
-                catch
-                {
-                    throw new ParallelForEachException(
-                        $"One or more elements failed in ParallelForEach ({whenAll.Exception.InnerExceptions.Count} failure(s)).",
-                        whenAll.Exception);
-                }
+                        var e = element;
+                        foreach (var action in actions)
+                        {
+                            e = await action.ExecuteAsync(context.New(e));
+                        }
+                        return e;
+                    },
+                    context.CancellationToken);
+                return new PayloadCollection(results);
             }
-
-            return new PayloadCollection(results);
+            catch (AggregateException agg)
+            {
+                throw new ParallelForEachException(
+                    $"One or more elements failed in ParallelForEach ({agg.InnerExceptions.Count} failure(s)).",
+                    agg);
+            }
         }
     }
 }
