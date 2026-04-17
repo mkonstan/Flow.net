@@ -119,6 +119,21 @@ new GetFiles
 
 ## Changelog
 
+### 0.4.1 (2026-04-17)
+
+**Features — construction helpers**
+- **`PipelineBuilder.CreatePipeline`** — four new static overloads for standalone pipeline construction: no-arg (empty), `params IPipelineAction[]` (sequence), `Action<IPipeline>` (fluent callback), and generic `Action<T>` (single-action pipeline). No logger required. Single factory for all `Pipeline` construction.
+- **`ParallelPipelineHelpers`** — fluent extension methods on `ParallelPipeline`: `AddPipeline(Action<IPipeline>)` for multi-step branches built via callback, and `AddPipeline<T>(Action<T>)` for single-action branches configured inline. Both chainable.
+- `CreatePipeline(params)` is permissive: null or empty arrays produce an empty pipeline rather than throwing. Empty pipelines are valid no-ops. `CreatePipeline(Action<IPipeline>)` normalizes `Actions` to a non-null empty array post-callback to preserve the `Actions != null` invariant even when the callback reassigns.
+- All inline `new Pipeline { Actions = ... }` sites in the codebase migrated to `PipelineBuilder.CreatePipeline`. Future construction-time concerns (default `PayloadProvider`, new invariants, validation hooks) now have one place to land.
+
+**Refactor — `PipelineAction.ExecuteAsync` orchestration clarity**
+- Internal refactor extracting three phase helpers: `ExecuteWorkAsync` (entry/exit logging + handler dispatch), `ExecutePrimaryAsync` (ErrorHandler branching with scoped success tracking), `TryRunOnResultAsync` (side-channel with OCE rethrow + swallow-and-warn on other exceptions). `ExecuteAsync` reduces to four lines of orchestration.
+- Zero behavior change. All 17 locked invariants from the resilience and OnResult features preserved. No public API changes.
+
+**Contract notes**
+- `ParallelPipeline.AddPipeline(params IPipelineAction[])` throw-on-null/empty contract is UNCHANGED. The factory's permissiveness and the fluent API's intent-signal throw are deliberately different layers.
+
 ### 0.4.0 (2026-04-16)
 
 **Features / redesign**
